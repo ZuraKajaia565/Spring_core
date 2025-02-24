@@ -6,7 +6,6 @@ import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.model.Trainer;
 import com.zura.gymCRM.model.Training;
 import com.zura.gymCRM.model.TrainingType;
-import com.zura.gymCRM.storage.TrainerStorage;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,41 +15,33 @@ import org.springframework.stereotype.Service;
 @Service
 public class TrainerService {
   private TrainerDAO trainerDAO;
-  private TrainerStorage trainerStorage;
 
   @Autowired
   public void setTrainerDAO(TrainerDAO trainerDAO) {
     this.trainerDAO = trainerDAO;
   }
 
-  @Autowired
-  public void setTrainerStorage(TrainerStorage trainerStorage) {
-    this.trainerStorage = trainerStorage;
-  }
-
   private static final Logger logger =
       LoggerFactory.getLogger(TrainerService.class);
 
-  public Trainer createTrainer(int userId, String firstName, String lastName,
-                               boolean isActive, String specialization,
-                               String trainingtypeName, Training training) {
+  public Trainer createTrainer(Trainer trainer) {
     try {
-      logger.info("Attempting to create trainer: {} {}", firstName, lastName);
+      logger.info("Attempting to create trainer: {} {}", trainer.getFirstName(),
+                  trainer.getLastName());
 
-      String username = generateUsername(firstName, lastName);
-      String password = generateRandomPassword();
-      Trainer trainer = new Trainer(
-          userId, firstName, lastName, username, password, isActive,
-          specialization, new TrainingType(trainingtypeName), training);
-
+      trainer.setUserName(trainerDAO.generateUsername(trainer.getFirstName(),
+                                                      trainer.getLastName()));
+      trainer.setPassword(generateRandomPassword());
       trainerDAO.addTrainer(trainer);
-      logger.info("Trainer created successfully: {}", username);
+      logger.info("Trainer created successfully: {}", trainer.getUserName());
 
       return trainer;
     } catch (Exception e) {
-      logger.error("Error creating trainer: {} {}", firstName, lastName, e);
-      throw new AddException("Failed to create trainer: " + firstName + " " +
-                             lastName);
+      logger.error("Error creating trainer: {} {}", trainer.getFirstName(),
+                   trainer.getLastName(), e);
+      throw new AddException(
+          "Failed to create trainer: " + trainer.getFirstName() + " " +
+          trainer.getLastName());
     }
   }
 
@@ -76,38 +67,22 @@ public class TrainerService {
     }
   }
 
-  public Trainer getTrainer(int userId) {
+  public Optional<Trainer> getTrainer(int userId) {
     try {
       logger.info("Fetching trainer with ID: {}", userId);
-      Trainer trainer = trainerDAO.getTrainer(userId);
-      if (trainer != null) {
-        logger.info("Trainer found: {}", trainer.getUserName());
-      } else {
-        logger.warn("Trainer not found with ID: {}", userId);
-      }
+      Optional<Trainer> trainer =
+          Optional.ofNullable(trainerDAO.getTrainer(userId));
+      trainer.ifPresentOrElse(
+          t
+          -> logger.info("Trainer found: {}", t.getUserName()),
+          () -> logger.warn("Trainer not found with ID: {}", userId));
+
       return trainer;
     } catch (Exception e) {
       logger.error("Error retrieving trainer with ID: {}", userId, e);
       throw new NotFoundException("Failed to retrieve trainer with ID: " +
                                   userId);
     }
-  }
-
-  private String generateUsername(String firstName, String lastName) {
-    String s = firstName + "." + lastName;
-    int cnt = 0;
-    for (Map.Entry<Integer, Trainer> entry :
-         trainerStorage.getTrainerMap().entrySet()) {
-      Trainer trainee = entry.getValue();
-      if (trainee.getFirstName().equals(firstName) &&
-          trainee.getLastName().equals(lastName)) {
-        cnt++;
-      }
-    }
-    if (cnt != 0) {
-      s += cnt;
-    }
-    return s;
   }
 
   private String generateRandomPassword() {

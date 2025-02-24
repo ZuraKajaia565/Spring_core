@@ -13,6 +13,7 @@ import com.zura.gymCRM.service.TrainerService;
 import com.zura.gymCRM.service.TrainingService;
 import com.zura.gymCRM.storage.TraineeStorage;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -54,7 +55,6 @@ class GymCrmApplicationTraineeTests {
     assertEquals(10,
                  traineeStorage.getTraineeMap().get(4).getPassword().length());
     assertNotEquals(null, traineeStorage.getTraineeMap().get(4));
-    System.out.println(trainee1.getPassword());
   }
 
   @Test
@@ -91,7 +91,6 @@ class GymCrmApplicationTraineeTests {
     assertEquals(10,
                  traineeStorage.getTraineeMap().get(5).getPassword().length());
     assertNotEquals(null, traineeStorage.getTraineeMap().get(5));
-    System.out.println(trainee1.getPassword());
   }
 
   @Test
@@ -108,7 +107,6 @@ class GymCrmApplicationTraineeTests {
     Trainee trainee1 = new Trainee(1, "John", "Doe", "John.Doe", "ssssssssss",
                                    true, birthDate, "New York", testTraining1);
     gymFacade.updateTrainee(trainee1);
-    System.out.println(traineeStorage.getTraineeMap().get(1).getPassword());
     assertEquals(1, traineeStorage.getTraineeMap().get(1).getUserId());
     assertEquals(trainee1.getPassword(),
                  traineeStorage.getTraineeMap().get(1).getPassword());
@@ -117,8 +115,6 @@ class GymCrmApplicationTraineeTests {
   @Test
   @Order(5)
   void testUpdateTrainee_Failure() {
-    System.out.println(traineeStorage.getTraineeMap().keySet());
-    System.out.println(traineeStorage.getTraineeMap().get(1).getUserName());
     LocalDate birthDate = LocalDate.of(1995, 5, 20);
 
     Training testTraining1 =
@@ -145,7 +141,11 @@ class GymCrmApplicationTraineeTests {
   @Order(7)
   void testSelectTrainee_Success() {
     int userId = 2;
-    Trainee trainee = gymFacade.selectTrainee(userId);
+
+    Optional<Trainee> optionalTrainee = gymFacade.selectTrainee(userId);
+
+    assertTrue(optionalTrainee.isPresent(), "Trainee should be present");
+    Trainee trainee = optionalTrainee.get();
     assertEquals(2, trainee.getUserId());
     assertEquals("Jane", trainee.getFirstName());
     assertEquals("Smith", trainee.getLastName());

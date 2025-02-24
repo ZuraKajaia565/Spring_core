@@ -3,10 +3,12 @@ package com.zura.gymCRM.facade;
 import com.zura.gymCRM.model.Trainee;
 import com.zura.gymCRM.model.Trainer;
 import com.zura.gymCRM.model.Training;
+import com.zura.gymCRM.model.TrainingType;
 import com.zura.gymCRM.service.TraineeService;
 import com.zura.gymCRM.service.TrainerService;
 import com.zura.gymCRM.service.TrainingService;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -27,8 +29,9 @@ public class GymFacade {
   public Trainee AddTrainee(int userId, String firstName, String lastName,
                             boolean isActive, LocalDate dateOfBirth,
                             String address, Training training) {
-    return traineeService.createTrainee(userId, firstName, lastName, isActive,
-                                        dateOfBirth, address, training);
+    Trainee trainee = new Trainee(userId, firstName, lastName, null, null,
+                                  isActive, dateOfBirth, address, training);
+    return traineeService.createTrainee(trainee);
   }
 
   public Trainee updateTrainee(Trainee trainee) {
@@ -39,35 +42,37 @@ public class GymFacade {
     traineeService.deleteTrainee(userId);
   }
 
-  public Trainee selectTrainee(int userId) {
+  public Optional<Trainee> selectTrainee(int userId) {
     return traineeService.selectTrainee(userId);
   }
 
   public Trainer addTrainer(int userId, String firstName, String lastName,
                             boolean isActive, String specialization,
                             String trainingTypeName, Training training) {
-    return trainerService.createTrainer(userId, firstName, lastName, isActive,
-                                        specialization, trainingTypeName,
-                                        training);
+    Trainer trainer = new Trainer(userId, firstName, lastName, null, null,
+                                  isActive, specialization,
+                                  new TrainingType(trainingTypeName), training);
+    return trainerService.createTrainer(trainer);
   }
 
   public Trainer updateTrainer(Trainer trainer) {
     return trainerService.updateTrainer(trainer);
   }
 
-  public Trainer getTrainer(int userId) {
+  public Optional<Trainer> getTrainer(int userId) {
     return trainerService.getTrainer(userId);
   }
 
   public Training addTraining(int traineeId, int trainerId, String trainingName,
                               String trainingType, LocalDate trainingDate,
                               int trainingDuration, String trainingTypeName) {
-    return trainingService.createTraining(traineeId, trainerId, trainingName,
-                                          trainingType, trainingDate,
-                                          trainingDuration, trainingTypeName);
+    Training training = new Training(
+        traineeId, trainerId, trainingName, trainingType, trainingDate,
+        trainingDuration, new TrainingType(trainingTypeName));
+    return trainingService.createTraining(training);
   }
 
-  public Training getTraining(int traineeId, int trainerId) {
+  public Optional<Training> getTraining(int traineeId, int trainerId) {
     return trainingService.getTraining(traineeId, trainerId);
   }
 }

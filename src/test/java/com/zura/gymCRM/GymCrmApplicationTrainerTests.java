@@ -13,6 +13,7 @@ import com.zura.gymCRM.service.TrainerService;
 import com.zura.gymCRM.service.TrainingService;
 import com.zura.gymCRM.storage.TrainerStorage;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -99,8 +100,6 @@ class GymCrmApplicationTrainerTests {
 
   @Order(4)
   void testUpdateTrainer_Success() {
-    System.out.println(trainerStorage.getTrainerMap().keySet());
-    System.out.println(trainerStorage.getTrainerMap().get(1).getUserName());
 
     Training testTraining1 =
         new Training(2, 9, "Strength", "Gym", LocalDate.now(), 60,
@@ -110,7 +109,6 @@ class GymCrmApplicationTrainerTests {
         new Trainer(1, "Emily", "Brown", "Emily.Bron", "ssssssssss", true,
                     "wrestling", new TrainingType("sports"), testTraining1);
     gymFacade.updateTrainer(trainer1);
-    System.out.println(trainerStorage.getTrainerMap().get(1).getPassword());
     assertEquals(1, trainerStorage.getTrainerMap().get(1).getUserId());
     assertEquals(trainer1.getPassword(),
                  trainerStorage.getTrainerMap().get(1).getPassword());
@@ -120,8 +118,6 @@ class GymCrmApplicationTrainerTests {
 
   @Order(5)
   void testUpdateTrainer_Failure() {
-    System.out.println(trainerStorage.getTrainerMap().keySet());
-    System.out.println(trainerStorage.getTrainerMap().get(1).getUserName());
 
     Training testTraining1 =
         new Training(4, 10, "Strength", "Gym", LocalDate.now(), 60,
@@ -135,11 +131,15 @@ class GymCrmApplicationTrainerTests {
   }
 
   @Test
-
   @Order(6)
   void testSelectTrainee_Success() {
     int userId = 2;
-    Trainer trainer = gymFacade.getTrainer(userId);
+
+    Optional<Trainer> optionalTrainer = gymFacade.getTrainer(userId);
+
+    assertTrue(optionalTrainer.isPresent(), "Trainer should be present");
+
+    Trainer trainer = optionalTrainer.get();
     assertEquals(2, trainer.getUserId());
     assertEquals("Michael", trainer.getFirstName());
     assertEquals("Green", trainer.getLastName());

@@ -13,6 +13,7 @@ import com.zura.gymCRM.storage.TrainingStorage;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -62,14 +63,18 @@ class GymCrmApplicationTrainingTests {
   }
 
   @Test
-
   @Order(3)
   void testSelectTraining_Success() {
-    Training training = gymFacade.getTraining(1, 1);
-    System.out.println(training.getTrainingName());
-    assertEquals("Yoga", training.getTrainingName());
-    assertEquals("sports", training.getTrainingType());
-    assertEquals(60, training.getTrainingDuration());
+
+    Optional<Training> optionalTraining = gymFacade.getTraining(1, 1);
+
+    assertTrue(optionalTraining.isPresent(), "Training should be present");
+
+    optionalTraining.ifPresent(training -> {
+      assertEquals("Yoga", training.getTrainingName());
+      assertEquals("sports", training.getTrainingType());
+      assertEquals(60, training.getTrainingDuration());
+    });
   }
 
   @Test
