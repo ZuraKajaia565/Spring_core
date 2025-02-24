@@ -4,6 +4,8 @@ import com.zura.gymCRM.dao.TraineeDAO;
 import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.model.Trainee;
+import com.zura.gymCRM.model.User;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -28,8 +30,9 @@ public class TraineeService {
       logger.info("Attempting to create trainee: {} {}", trainee.getFirstName(),
                   trainee.getLastName());
 
-      trainee.setUserName(traineeDAO.generateUsername(trainee.getFirstName(),
-                                                      trainee.getLastName()));
+      Map<Integer, Trainee> usermap = traineeDAO.getAllTrainees();
+      trainee.setUserName(UsernameGenerator.generateUsername(
+          trainee.getFirstName(), trainee.getLastName(), usermap));
       trainee.setPassword(generateRandomPassword());
       traineeDAO.addTrainee(trainee);
       logger.info("Trainee created successfully: {}", trainee.getUsername());

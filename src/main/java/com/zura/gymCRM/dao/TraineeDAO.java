@@ -10,59 +10,45 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class TraineeDAO {
-	private TraineeStorage storage;
+  private TraineeStorage storage;
 
-	@Autowired
-	public void setTraineeStorage(TraineeStorage storage) {
-		this.storage = storage;
-	}
+  @Autowired
+  public void setTraineeStorage(TraineeStorage storage) {
+    this.storage = storage;
+  }
 
-	public TraineeDAO(TraineeStorage storage) {
-		this.storage = storage;
-	}
+  public TraineeDAO(TraineeStorage storage) { this.storage = storage; }
 
-	public void addTrainee(Trainee trainee) throws AddException {
-		if (storage.getTraineeMap().get(trainee.getUserId()) != null) {
-			throw new AddException("Trainee already exists");
-		}
-		storage.getTraineeMap().put(trainee.getUserId(), trainee);
-	}
+  public void addTrainee(Trainee trainee) throws AddException {
+    if (storage.getTraineeMap().get(trainee.getUserId()) != null) {
+      throw new AddException("Trainee already exists");
+    }
+    storage.getTraineeMap().put(trainee.getUserId(), trainee);
+  }
 
-	public Trainee getTrainee(int userId) throws NotFoundException {
-		if (storage.getTraineeMap().get(userId) == null) {
-			throw new NotFoundException("Trainee not found");
-		}
-		return storage.getTraineeMap().get(userId);
-	}
+  public Trainee getTrainee(int userId) throws NotFoundException {
+    if (storage.getTraineeMap().get(userId) == null) {
+      throw new NotFoundException("Trainee not found");
+    }
+    return storage.getTraineeMap().get(userId);
+  }
 
-	public boolean updateTrainee(Trainee updatedTrainee) {
-		System.out.println(updatedTrainee.getPassword().length());
-		if (storage.getTraineeMap().containsKey(updatedTrainee.getUserId()) &&
-				(updatedTrainee.getPassword().length() == 10)) {
+  public boolean updateTrainee(Trainee updatedTrainee) {
+    System.out.println(updatedTrainee.getPassword().length());
+    if (storage.getTraineeMap().containsKey(updatedTrainee.getUserId()) &&
+        (updatedTrainee.getPassword().length() == 10)) {
 
-			storage.getTraineeMap().put(updatedTrainee.getUserId(), updatedTrainee);
-			return true;
-		}
-		return false;
-	}
+      storage.getTraineeMap().put(updatedTrainee.getUserId(), updatedTrainee);
+      return true;
+    }
+    return false;
+  }
 
-	public void deleteTrainee(int userId) {
-		storage.getTraineeMap().remove(userId);
-	}
+  public void deleteTrainee(int userId) {
+    storage.getTraineeMap().remove(userId);
+  }
 
-	public String generateUsername(String firstName, String lastName) {
-		String userName = firstName + "." + lastName;
-		int cnt = 0;
-		for (Map.Entry<Integer, Trainee> entry : storage.getTraineeMap().entrySet()) {
-			Trainee trainee = entry.getValue();
-			if (trainee.getFirstName().equals(firstName) &&
-					trainee.getLastName().equals(lastName)) {
-				cnt++;
-			}
-		}
-		if (cnt != 0) {
-			userName += cnt;
-		}
-		return userName;
-	}
+  public Map<Integer, Trainee> getAllTrainees() {
+    return storage.getTraineeMap();
+  }
 }

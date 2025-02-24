@@ -40,20 +40,7 @@ public class TrainerDAO {
     return false;
   }
 
-  public String generateUsername(String firstName, String lastName) {
-    String userName = firstName + "." + lastName;
-    int cnt = 0;
-    for (Map.Entry<Integer, Trainer> entry :
-         storage.getTrainerMap().entrySet()) {
-      Trainer trainee = entry.getValue();
-      if (trainee.getFirstName().equals(firstName) &&
-          trainee.getLastName().equals(lastName)) {
-        cnt++;
-      }
-    }
-    if (cnt != 0) {
-      userName += cnt;
-    }
-    return userName;
+  public Map<Integer, Trainer> getAllTrainers() {
+    return storage.getTrainerMap();
   }
 }
