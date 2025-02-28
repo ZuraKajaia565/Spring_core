@@ -1,11 +1,16 @@
 package com.zura.gymCRM.service;
 
-import com.zura.gymCRM.dao.TraineeDAO;
-import com.zura.gymCRM.exceptions.AddException;
+import com.zura.gymCRM.dao.TraineeRepository;
+import com.zura.gymCRM.dao.TrainerRepository;
+import com.zura.gymCRM.entities.Trainee;
+import com.zura.gymCRM.entities.Trainer;
+import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.exceptions.NotFoundException;
-import com.zura.gymCRM.model.Trainee;
-import com.zura.gymCRM.model.User;
-import java.util.Map;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -15,77 +20,220 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TraineeService {
-  private TraineeDAO traineeDAO;
+  private TraineeRepository traineeRepository;
+  private TrainerRepository trainerRepository;
 
   @Autowired
-  public void setTraineeDAO(TraineeDAO traineeDAO) {
-    this.traineeDAO = traineeDAO;
+  public void setTraineeRepository(TraineeRepository traineeRepository) {
+    this.traineeRepository = traineeRepository;
+  }
+
+  @Autowired
+  public void setTrainerRepository(TrainerRepository trainerRepository) {
+    this.trainerRepository = trainerRepository;
   }
 
   private static final Logger logger =
       LoggerFactory.getLogger(TraineeService.class);
 
-  public Trainee createTrainee(Trainee trainee) {
-    try {
-      logger.info("Attempting to create trainee: {} {}", trainee.getFirstName(),
-                  trainee.getLastName());
+  @Transactional
+  public Trainee createTrainee(@Valid Trainee trainee) {
+    logger.info("Attempting to create trainee: {}",
+                trainee.getUser().getFirstName(),
+                trainee.getUser().getLastName());
 
-      Map<Integer, Trainee> usermap = traineeDAO.getAllTrainees();
-      trainee.setUserName(UsernameGenerator.generateUsername(
-          trainee.getFirstName(), trainee.getLastName(), usermap));
-      trainee.setPassword(generateRandomPassword());
-      traineeDAO.addTrainee(trainee);
-      logger.info("Trainee created successfully: {}", trainee.getUsername());
+    List<Trainee> userlist = traineeRepository.findAll();
+    trainee.getUser().setUsername(UsernameGenerator.generateUsername(
+        trainee.getUser().getFirstName(), trainee.getUser().getLastName(),
+        userlist));
+    trainee.getUser().setPassword(generateRandomPassword());
 
-      return trainee;
-    } catch (Exception e) {
-      logger.error("Error while creating trainee: {} {}",
-                   trainee.getFirstName(), trainee.getLastName(), e);
-      throw new AddException(
-          "Failed to create trainee: " + trainee.getFirstName() + " " +
-          trainee.getLastName());
+    traineeRepository.save(trainee);
+    logger.info("Trainee created successfully: {}",
+                trainee.getUser().getUsername());
+
+    return trainee;
+  }
+
+  @Transactional
+  public void deleteTrainee(Long traineeId) {
+    traineeRepository.deleteById(traineeId);
+  }
+
+  public Optional<Trainee> selectTrainee(Long traineeId) {
+
+    logger.info("Fetching trainee with ID: {}", traineeId);
+    Optional<Trainee> trainee = traineeRepository.findById(traineeId);
+
+    trainee.ifPresentOrElse(
+        t
+        -> logger.info("Trainee found: {}", t.getUser().getUsername()),
+        () -> logger.warn("Trainee not found with ID: {}", traineeId));
+
+    return trainee;
+  }
+
+  public Trainee selectTraineeByUsername(String username)
+      throws NotFoundException {
+    return traineeRepository.findByUser_Username(username).orElseThrow(
+        () -> new NotFoundException(username));
+  }
+
+  @Transactional
+  public void changePassword(String username, String newPassword)
+      throws EntityNotFoundException {
+
+    Optional<Trainee> traineeOpt =
+        traineeRepository.findByUser_Username(username);
+    if (traineeOpt.isPresent()) {
+      Trainee trainee = traineeOpt.get();
+      trainee.getUser().setPassword(newPassword);
+      traineeRepository.save(trainee);
+    } else {
+      throw new EntityNotFoundException("Trainee not found");
     }
   }
 
-  public Trainee updateTrainee(Trainee trainee) {
-    try {
-      logger.info("Attempting to update trainee: {}", trainee.getUsername());
+  @Transactional
+  public Trainee activateTrainee(String username) throws NotFoundException {
+    Trainee trainee =
+        traineeRepository.findByUser_Username(username).orElseThrow(
+            () -> new NotFoundException("Not found" + username));
 
-      if (traineeDAO.updateTrainee(trainee)) {
-        logger.info("Trainee updated successfully: {}", trainee.getUsername());
-        return trainee;
-      } else {
-        logger.warn("Trainee not found: {}", trainee.getUsername());
-        throw new RuntimeException("Trainee not found: " +
-                                   trainee.getUsername());
+    if (trainee.getUser().getIsActive()) {
+      logger.info(
+          "Trainee with this username is already active, reactivating.");
+    } else {
+      trainee.getUser().setIsActive(true);
+    }
+
+    return traineeRepository.save(trainee);
+  }
+
+  @Transactional
+  public Trainee deactivateTrainee(String username) throws NotFoundException {
+    Trainee trainee =
+        traineeRepository.findByUser_Username(username).orElseThrow(
+            () -> new NotFoundException("Not found" + username));
+
+    if (!trainee.getUser().getIsActive()) {
+      logger.info(
+          "Trainee with this username is already inactive, reactivating.{}",
+          username);
+
+    } else {
+      trainee.getUser().setIsActive(false);
+    }
+
+    return traineeRepository.save(trainee);
+  }
+
+  @Transactional
+  public void deleteTraineeByUsername(String username)
+      throws NotFoundException {
+    logger.info("Attempting to delete Trainee with Username: {}", username);
+
+    Trainee trainee =
+        traineeRepository.findByUser_Username(username).orElseThrow(
+            () -> new NotFoundException("Not found" + username));
+
+    logger.info("Trainee with Username: {} found. Proceeding with deletion.",
+                username);
+
+    traineeRepository.deleteByUser_Username(username);
+
+    logger.info("Trainee with Username: {} successfully deleted.", username);
+  }
+
+  @Transactional
+  public List<Training>
+  getTraineeTrainingsByCriteria(String username, Date fromDate, Date toDate,
+                                String trainerName, String trainingType)
+      throws NotFoundException {
+
+    Optional<Trainee> traineeOptional =
+        traineeRepository.findByUser_Username(username);
+    if (traineeOptional.isEmpty()) {
+      throw new NotFoundException("Not found" + username);
+    }
+
+    List<Training> trainings = traineeRepository.findTrainingsByCriteria(
+        username, fromDate, toDate, trainerName, trainingType);
+
+    return trainings;
+  }
+
+  @Transactional
+  public List<Trainer> getUnassignedTrainersForTrainee(String username)
+      throws NotFoundException {
+
+    Optional<Trainee> traineeOptional =
+        traineeRepository.findByUser_Username(username);
+    if (traineeOptional.isEmpty()) {
+      throw new NotFoundException(username);
+    }
+    Trainee trainee = traineeOptional.get();
+    return trainerRepository.findTrainersNotAssignedToTrainee(trainee.getId());
+  }
+
+  @Transactional
+  public Trainee updateTrainee(@Valid Trainee updatedTrainee)
+      throws NotFoundException {
+    Long id = updatedTrainee.getId();
+    logger.info("Attempting to update Trainer with ID: {}", id);
+
+    Trainee trainee = traineeRepository.findById(id).orElseThrow(
+        () -> new NotFoundException("Not found" + id));
+
+    logger.info("Updating Trainer with ID: {}", id);
+    trainee.getUser().setFirstName(updatedTrainee.getUser().getFirstName());
+    trainee.getUser().setLastName(updatedTrainee.getUser().getLastName());
+    trainee.getUser().setUsername(updatedTrainee.getUser().getUsername());
+    trainee.getUser().setPassword(updatedTrainee.getUser().getPassword());
+    trainee.getUser().setIsActive(updatedTrainee.getUser().getIsActive());
+    trainee.setDateOfBirth(updatedTrainee.getDateOfBirth());
+    trainee.setAddress(updatedTrainee.getAddress());
+
+    Trainee updated = traineeRepository.save(trainee);
+    logger.info("Trainer with ID: {} successfully updated", id);
+
+    return updated;
+  }
+
+  @Transactional
+  public Trainee assignOrRemoveTrainer(String traineeUsername,
+                                       String trainerUsername, boolean assign) {
+    Trainee trainee =
+        traineeRepository.findByUser_Username(traineeUsername)
+            .orElseThrow(()
+                             -> new NotFoundException("Trainee not found: " +
+                                                      traineeUsername));
+
+    Trainer trainer =
+        trainerRepository.findByUser_Username(trainerUsername)
+            .orElseThrow(()
+                             -> new NotFoundException("Trainer not found: " +
+                                                      trainerUsername));
+
+    if (assign) {
+      if (trainee.getTrainers().contains(trainer)) {
+        throw new IllegalArgumentException(
+            "Trainer is already assigned to this trainee.");
       }
-    } catch (Exception e) {
-      logger.error("Error while updating trainee: {}", trainee.getUsername(),
-                   e);
-      throw new RuntimeException(
-          "Failed to update trainee: " + trainee.getUsername(), e);
+      trainee.getTrainers().add(trainer);
+      logger.info("Assigned trainer {} to trainee {}", trainerUsername,
+                  traineeUsername);
+    } else {
+      if (!trainee.getTrainers().contains(trainer)) {
+        throw new IllegalArgumentException(
+            "Trainer is not assigned to this trainee.");
+      }
+      trainee.getTrainers().remove(trainer);
+      logger.info("Removed trainer {} from trainee {}", trainerUsername,
+                  traineeUsername);
     }
-  }
 
-  public void deleteTrainee(int userId) { traineeDAO.deleteTrainee(userId); }
-
-  public Optional<Trainee> selectTrainee(int userId) {
-    try {
-      logger.info("Fetching trainee with ID: {}", userId);
-      Optional<Trainee> trainee =
-          Optional.ofNullable(traineeDAO.getTrainee(userId));
-
-      trainee.ifPresentOrElse(
-          t
-          -> logger.info("Trainee found: {}", t.getUsername()),
-          () -> logger.warn("Trainee not found with ID: {}", userId));
-
-      return trainee;
-    } catch (Exception e) {
-      logger.error("Error while selecting trainee with ID: {}", userId, e);
-      throw new NotFoundException("Failed to retrieve trainee with ID: " +
-                                  userId);
-    }
+    return traineeRepository.save(trainee);
   }
 
   private String generateRandomPassword() {

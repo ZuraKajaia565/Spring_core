@@ -1,9 +1,12 @@
 package com.zura.gymCRM.service;
 
-import com.zura.gymCRM.dao.TrainerDAO;
+import com.zura.gymCRM.dao.TrainerRepository;
+import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
-import com.zura.gymCRM.model.Trainer;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,76 +15,117 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TrainerService {
-  private TrainerDAO trainerDAO;
+  private TrainerRepository trainerRepository;
 
   @Autowired
-  public void setTrainerDAO(TrainerDAO trainerDAO) {
-    this.trainerDAO = trainerDAO;
+  public void setTrainerRepository(TrainerRepository trainerRepository) {
+    this.trainerRepository = trainerRepository;
+    ;
   }
 
   private static final Logger logger =
       LoggerFactory.getLogger(TrainerService.class);
 
   public Trainer createTrainer(Trainer trainer) {
-    try {
-      logger.info("Attempting to create trainer: {} {}", trainer.getFirstName(),
-                  trainer.getLastName());
 
-      Map<Integer, Trainer> usermap = trainerDAO.getAllTrainers();
-      trainer.setUserName(UsernameGenerator.generateUsername(
-          trainer.getFirstName(), trainer.getLastName(), usermap));
-      trainer.setPassword(generateRandomPassword());
-      trainerDAO.addTrainer(trainer);
-      logger.info("Trainer created successfully: {}", trainer.getUserName());
+    logger.info("Attempting to create trainer: {} {}",
+                trainer.getUser().getFirstName(),
+                trainer.getUser().getLastName());
 
-      return trainer;
-    } catch (Exception e) {
-      logger.error("Error creating trainer: {} {}", trainer.getFirstName(),
-                   trainer.getLastName(), e);
-      throw new AddException(
-          "Failed to create trainer: " + trainer.getFirstName() + " " +
-          trainer.getLastName());
+    List<Trainer> userlist = trainerRepository.findAll();
+    trainer.getUser().setUsername(UsernameGenerator.generateUsername(
+        trainer.getUser().getFirstName(), trainer.getUser().getLastName(),
+        userlist));
+    trainer.getUser().setPassword(generateRandomPassword());
+    trainerRepository.save(trainer);
+    logger.info("Trainer created successfully: {}",
+                trainer.getUser().getUsername());
+
+    return trainer;
+  }
+
+  public Optional<Trainer> getTrainer(Long userId) {
+
+    logger.info("Fetching trainer with ID: {}", userId);
+    Optional<Trainer> trainer = trainerRepository.findById(userId);
+    trainer.ifPresentOrElse(
+        t
+        -> logger.info("Trainer found: {}", t.getUser().getUsername()),
+        () -> logger.warn("Trainer not found with ID: {}", userId));
+
+    return trainer;
+  }
+
+  public Trainer findTrainerByUsername(String username)
+      throws NotFoundException {
+    return trainerRepository.findByUser_Username(username).orElseThrow(
+        () -> new NotFoundException(username));
+  }
+
+  @Transactional
+  public void changePassword(Long trainerId, String newPassword)
+      throws EntityNotFoundException {
+    Optional<Trainer> trainerOpt = trainerRepository.findById(trainerId);
+    if (trainerOpt.isPresent()) {
+      Trainer trainer = trainerOpt.get();
+      trainer.getUser().setPassword(newPassword);
+      trainerRepository.save(trainer); // Persist the updated entity
+    } else {
+      throw new EntityNotFoundException("Trainee not found");
     }
   }
 
-  public Trainer updateTrainer(Trainer updatedTrainer) {
-    try {
-      logger.info("Attempting to update trainer: {}",
-                  updatedTrainer.getUserId());
+  @Transactional
+  public Trainer activateTrainer(Long id) throws NotFoundException {
+    Trainer trainer = trainerRepository.findById(id).orElseThrow(
+        () -> new NotFoundException("Not found" + id));
 
-      boolean updated = trainerDAO.updateTrainer(updatedTrainer);
-      if (!updated) {
-        logger.warn("Trainer not found: ID {}", updatedTrainer.getUserId());
-        throw new RuntimeException("Trainer with ID " +
-                                   updatedTrainer.getUserId() + " not found!");
-      }
-
-      logger.info("Trainer updated successfully: ID {}",
-                  updatedTrainer.getUserId());
-      return updatedTrainer;
-    } catch (Exception e) {
-      logger.error("Error updating trainer: {}", updatedTrainer.getUserId(), e);
-      throw new RuntimeException(
-          "Failed to update trainer: " + updatedTrainer.getUserId(), e);
+    if (trainer.getUser().getIsActive()) {
+      System.out.println("Trainer with ID " + id +
+                         " is already active, reactivating.");
+    } else {
+      trainer.getUser().setIsActive(true);
     }
+
+    return trainerRepository.save(trainer);
   }
 
-  public Optional<Trainer> getTrainer(int userId) {
-    try {
-      logger.info("Fetching trainer with ID: {}", userId);
-      Optional<Trainer> trainer =
-          Optional.ofNullable(trainerDAO.getTrainer(userId));
-      trainer.ifPresentOrElse(
-          t
-          -> logger.info("Trainer found: {}", t.getUserName()),
-          () -> logger.warn("Trainer not found with ID: {}", userId));
+  @Transactional
+  public Trainer deactivateTrainer(Long id) throws NotFoundException {
+    Trainer trainer = trainerRepository.findById(id).orElseThrow(
+        () -> new NotFoundException("Not found" + id));
 
-      return trainer;
-    } catch (Exception e) {
-      logger.error("Error retrieving trainer with ID: {}", userId, e);
-      throw new NotFoundException("Failed to retrieve trainer with ID: " +
-                                  userId);
+    if (!trainer.getUser().getIsActive()) {
+      System.out.println("Trainer with ID " + id +
+                         " is already inactive, deactivating.");
+    } else {
+      trainer.getUser().setIsActive(false);
     }
+
+    return trainerRepository.save(trainer);
+  }
+
+  @Transactional
+  public Trainer updateTrainer(@Valid Trainer updatedTrainer)
+      throws NotFoundException {
+    Long id = updatedTrainer.getId();
+    logger.info("Attempting to update Trainer with ID: {}", id);
+
+    Trainer trainer = trainerRepository.findById(id).orElseThrow(
+        () -> new NotFoundException("Not found" + id));
+
+    logger.info("Updating Trainer with ID: {}", id);
+    trainer.getUser().setFirstName(updatedTrainer.getUser().getFirstName());
+    trainer.getUser().setLastName(updatedTrainer.getUser().getLastName());
+    trainer.getUser().setUsername(updatedTrainer.getUser().getUsername());
+    trainer.getUser().setPassword(updatedTrainer.getUser().getPassword());
+    trainer.getUser().setIsActive(updatedTrainer.getUser().getIsActive());
+    trainer.setSpecialization(updatedTrainer.getSpecialization());
+
+    Trainer updated = trainerRepository.save(trainer);
+    logger.info("Trainer with ID: {} successfully updated", id);
+
+    return updated;
   }
 
   private String generateRandomPassword() {

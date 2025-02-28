@@ -1,23 +1,36 @@
 package com.zura.gymCRM.service;
 
-import com.zura.gymCRM.model.User;
-import java.util.Map;
+import com.zura.gymCRM.entities.Trainee;
+import com.zura.gymCRM.entities.Trainer;
+import com.zura.gymCRM.entities.User;
+import java.util.List;
 
 public class UsernameGenerator {
-	public static String generateUsername(String firstName, String lastName,
-			Map<Integer, ? extends User> userMap) {
-		String userName = firstName + "." + lastName;
-		int cnt = 0;
-		for (Map.Entry<Integer, ? extends User> entry : userMap.entrySet()) {
-			User user = entry.getValue();
-			if (user.getFirstName().equals(firstName) &&
-					user.getLastName().equals(lastName)) {
-				cnt++;
-			}
-		}
-		if (cnt != 0) {
-			userName += cnt;
-		}
-		return userName;
-	}
+  public static <T> String generateUsername(String firstName, String lastName,
+                                            List<T> userList) {
+    String userName = firstName + "." + lastName;
+    int cnt = 0;
+
+    for (T user : userList) {
+      if (user instanceof Trainee trainee) {
+        User traineeUser = trainee.getUser();
+        if (traineeUser.getFirstName().equals(firstName) &&
+            traineeUser.getLastName().equals(lastName)) {
+          cnt++;
+        }
+      } else if (user instanceof Trainer trainer) {
+        User trainerUser = trainer.getUser();
+        if (trainerUser.getFirstName().equals(firstName) &&
+            trainerUser.getLastName().equals(lastName)) {
+          cnt++;
+        }
+      }
+    }
+
+    if (cnt > 0) {
+      userName += cnt;
+    }
+
+    return userName;
+  }
 }
