@@ -2,6 +2,7 @@ package com.zura.gymCRM.service;
 
 import com.zura.gymCRM.dao.TrainerRepository;
 import com.zura.gymCRM.entities.Trainer;
+import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import jakarta.persistence.EntityNotFoundException;
@@ -63,9 +64,10 @@ public class TrainerService {
   }
 
   @Transactional
-  public void changePassword(Long trainerId, String newPassword)
+  public void changePassword(String username, String newPassword)
       throws EntityNotFoundException {
-    Optional<Trainer> trainerOpt = trainerRepository.findById(trainerId);
+    Optional<Trainer> trainerOpt =
+        trainerRepository.findByUser_Username(username);
     if (trainerOpt.isPresent()) {
       Trainer trainer = trainerOpt.get();
       trainer.getUser().setPassword(newPassword);
@@ -76,12 +78,13 @@ public class TrainerService {
   }
 
   @Transactional
-  public Trainer activateTrainer(Long id) throws NotFoundException {
-    Trainer trainer = trainerRepository.findById(id).orElseThrow(
-        () -> new NotFoundException("Not found" + id));
+  public Trainer activateTrainer(String username) throws NotFoundException {
+    Trainer trainer =
+        trainerRepository.findByUser_Username(username).orElseThrow(
+            () -> new NotFoundException("Not found" + username));
 
     if (trainer.getUser().getIsActive()) {
-      System.out.println("Trainer with ID " + id +
+      System.out.println("Trainer with username: " + username +
                          " is already active, reactivating.");
     } else {
       trainer.getUser().setIsActive(true);
@@ -91,12 +94,13 @@ public class TrainerService {
   }
 
   @Transactional
-  public Trainer deactivateTrainer(Long id) throws NotFoundException {
-    Trainer trainer = trainerRepository.findById(id).orElseThrow(
-        () -> new NotFoundException("Not found" + id));
+  public Trainer deactivateTrainer(String username) throws NotFoundException {
+    Trainer trainer =
+        trainerRepository.findByUser_Username(username).orElseThrow(
+            () -> new NotFoundException("Not found" + username));
 
     if (!trainer.getUser().getIsActive()) {
-      System.out.println("Trainer with ID " + id +
+      System.out.println("Trainer with username: " + username +
                          " is already inactive, deactivating.");
     } else {
       trainer.getUser().setIsActive(false);
@@ -126,6 +130,24 @@ public class TrainerService {
     logger.info("Trainer with ID: {} successfully updated", id);
 
     return updated;
+  }
+
+  @Transactional
+  public List<Training>
+  getTrainerTrainingsByCriteria(String username, Date fromDate, Date toDate,
+                                String traineeName, String trainingType)
+      throws NotFoundException {
+
+    Optional<Trainer> trainerOptional =
+        trainerRepository.findByUser_Username(username);
+    if (trainerOptional.isEmpty()) {
+      throw new NotFoundException("Not found" + username);
+    }
+
+    List<Training> trainings = trainerRepository.findTrainingsByCriteria(
+        username, fromDate, toDate, traineeName);
+
+    return trainings;
   }
 
   private String generateRandomPassword() {

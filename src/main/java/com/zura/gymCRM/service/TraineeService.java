@@ -60,19 +60,6 @@ public class TraineeService {
     traineeRepository.deleteById(traineeId);
   }
 
-  public Optional<Trainee> selectTrainee(Long traineeId) {
-
-    logger.info("Fetching trainee with ID: {}", traineeId);
-    Optional<Trainee> trainee = traineeRepository.findById(traineeId);
-
-    trainee.ifPresentOrElse(
-        t
-        -> logger.info("Trainee found: {}", t.getUser().getUsername()),
-        () -> logger.warn("Trainee not found with ID: {}", traineeId));
-
-    return trainee;
-  }
-
   public Trainee selectTraineeByUsername(String username)
       throws NotFoundException {
     return traineeRepository.findByUser_Username(username).orElseThrow(

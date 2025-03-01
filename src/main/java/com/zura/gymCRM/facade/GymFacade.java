@@ -103,7 +103,8 @@ public class GymFacade {
 
   @Transactional
   public void changeTraineePassword(String username, String newPassword) {
-    if (traineeService.selectTraineeByUsername(username) != null) {
+    if (traineeService.selectTraineeByUsername(username) != null &&
+        newPassword.length() == 10) {
 
       traineeService.changePassword(username, newPassword);
     } else {
@@ -126,7 +127,7 @@ public class GymFacade {
 
   @Transactional
   public Trainer addTrainer(String firstName, String lastName, boolean isActive,
-                            String specialization, TrainingType trainingType) {
+                            TrainingType trainingType) {
     User user = new User();
     user.setFirstName(firstName);
     user.setLastName(lastName);
@@ -142,8 +143,8 @@ public class GymFacade {
 
   @Transactional
   public Trainer updateTrainer(Trainer trainer) {
-    if (traineeService.selectTraineeByUsername(
-            trainer.getUser().getUsername()) != null) {
+    if (trainerService.findTrainerByUsername(trainer.getUser().getUsername()) !=
+        null) {
 
       return trainerService.updateTrainer(trainer);
     } else {
@@ -152,34 +153,43 @@ public class GymFacade {
     }
   }
 
-  public Optional<Trainer> getTrainer(Long userId) {
-    return trainerService.getTrainer(userId);
-  }
+  public List<Training>
+  getTrainerTrainingsByCriteria(String username, Date fromDate, Date toDate,
+                                String trainerName, String trainingType) {
+    if (trainerService.findTrainerByUsername(username) != null) {
 
-  @Transactional
-  public void changeTrainerPassword(Long trainerId, String username,
-                                    String newPassword) {
-    if (traineeService.selectTraineeByUsername(username) != null) {
-
-      trainerService.changePassword(trainerId, newPassword);
+      return trainerService.getTrainerTrainingsByCriteria(
+          username, fromDate, toDate, trainerName, trainingType);
     } else {
-      throw new NotFoundException("Trainee with this {} username is not found" +
+      throw new NotFoundException("Trainer with this {} username is not found" +
                                   username);
     }
   }
 
   @Transactional
-  public Trainer activateTrainer(Long id) {
-    return trainerService.activateTrainer(id);
+  public void changeTrainerPassword(String username, String newPassword) {
+    if (trainerService.findTrainerByUsername(username) != null &&
+        newPassword.length() == 10) {
+
+      trainerService.changePassword(username, newPassword);
+    } else {
+      throw new NotFoundException("Trainer with this {} username is not found" +
+                                  username);
+    }
   }
 
   @Transactional
-  public Trainer deactivateTrainer(Long id) {
-    return trainerService.deactivateTrainer(id);
+  public Trainer activateTrainer(String username) {
+    return trainerService.activateTrainer(username);
   }
 
-  public Trainer findTrainerByUsername(String username) {
-    if (traineeService.selectTraineeByUsername(username) != null) {
+  @Transactional
+  public Trainer deactivateTrainer(String username) {
+    return trainerService.deactivateTrainer(username);
+  }
+
+  public Trainer selectTrainerByUsername(String username) {
+    if (trainerService.findTrainerByUsername(username) != null) {
       return trainerService.findTrainerByUsername(username);
     } else {
       throw new NotFoundException("Trainee with this {} username is not found" +

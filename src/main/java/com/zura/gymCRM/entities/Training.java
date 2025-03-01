@@ -8,7 +8,7 @@ import java.util.Date;
 public class Training {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
 
-  @ManyToOne(cascade = CascadeType.ALL)
+  @ManyToOne(cascade = CascadeType.MERGE)
   @JoinColumn(name = "trainee_id", nullable = false)
   private Trainee trainee;
 

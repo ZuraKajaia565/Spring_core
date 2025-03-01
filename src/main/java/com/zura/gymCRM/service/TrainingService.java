@@ -24,7 +24,6 @@ public class TrainingService {
 
   @Transactional
   public Training createTraining(Training training) {
-    logger.info("Creating training: TrainingID={}", training.getId());
 
     trainingRepository.save(training);
 

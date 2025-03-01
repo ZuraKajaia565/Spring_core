@@ -19,8 +19,8 @@ public interface TraineeRepository extends JpaRepository<Trainee, Long> {
          + "WHERE t.trainee.user.username = :username "
          + "AND (:fromDate IS NULL OR t.trainingDate >= :fromDate) "
          + "AND (:toDate IS NULL OR t.trainingDate <= :toDate) "
-         + "AND (:trainerName IS NULL OR t.trainer.user.firstName LIKE "
-         + "%:trainerName% OR t.trainer.user.lastName LIKE %:trainerName%) "
+         + "AND (:trainerName IS NULL OR t.trainer.user.username LIKE "
+         + "%:trainerName%) "
          + "AND (:trainingType IS NULL OR t.trainingType.trainingTypeName "
          + "LIKE %:trainingType%)")
   List<Training>

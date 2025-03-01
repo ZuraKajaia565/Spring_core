@@ -12,7 +12,7 @@ public class Trainee {
   @Column(name = "trainee_id")
   private Long id;
 
-  @OneToOne(cascade = CascadeType.ALL)
+  @OneToOne(cascade = {CascadeType.ALL})
   @JoinColumn(name = "user_id", nullable = false, unique = true)
   private User user;
 
