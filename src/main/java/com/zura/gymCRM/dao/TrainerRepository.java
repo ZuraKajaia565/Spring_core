@@ -1,5 +1,6 @@
 package com.zura.gymCRM.dao;
 
+import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import java.util.List;
@@ -26,10 +27,13 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
          + "AND (:fromDate IS NULL OR t.trainingDate >= :fromDate) "
          + "AND (:toDate IS NULL OR t.trainingDate <= :toDate) "
          + "AND (:traineeName IS NULL OR t.trainee.user.username LIKE "
-         + "%:traineeName%) ")
+         + "%:traineeName%)")
   List<Training>
   findTrainingsByCriteria(@Param("username") String username,
                           @Param("fromDate") java.util.Date fromDate,
                           @Param("toDate") java.util.Date toDate,
                           @Param("traineeName") String traineeName);
+
+  @Query("SELECT t FROM Trainee t JOIN t.trainers tr WHERE tr.id = :id")
+  List<Trainee> findTrainees(Long id);
 }

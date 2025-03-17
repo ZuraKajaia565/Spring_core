@@ -19,7 +19,7 @@ public class Training {
   @Column(nullable = false) private String trainingName;
 
   @ManyToOne
-  @JoinColumn(name = "trainingtype_id", nullable = false)
+  @JoinColumn(name = "trainingtype_id", nullable = true)
   private TrainingType trainingType;
 
   @Column private Date trainingDate;

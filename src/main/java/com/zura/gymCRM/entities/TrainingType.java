@@ -16,12 +16,10 @@ public class TrainingType {
 
   public TrainingType() {}
 
-  // Parameterized constructor
   public TrainingType(String trainingTypeName) {
     this.trainingTypeName = trainingTypeName;
   }
 
-  // Getters and Setters
   public Long getId() { return id; }
 
   public void setId(Long id) { this.id = id; }

@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,24 +25,25 @@ public class TrainingService {
 
   @Transactional
   public Training createTraining(Training training) {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} Creating training for TrainingID={}", transactionId, training.getId());
 
     trainingRepository.save(training);
 
-    logger.info("Training created successfully for TrainingID={}",
-                training.getId());
+    logger.info("Transaction ID: {} Training created successfully for TrainingID={}", transactionId, training.getId());
     return training;
   }
 
   public Optional<Training> getTraining(Long trainingId) {
-
-    logger.info("Fetching training for TrainingID={}", trainingId);
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} Fetching training for TrainingID={}", transactionId, trainingId);
 
     Optional<Training> training = trainingRepository.findById(trainingId);
 
-    if (training != null) {
-      logger.info("Training found: {}", trainingId);
+    if (training.isPresent()) {
+      logger.info("Transaction ID: {} Training found: {}", transactionId, trainingId);
     } else {
-      logger.warn("No training found for TrainingID={}", trainingId);
+      logger.warn("Transaction ID: {} No training found for TrainingID={}", transactionId, trainingId);
     }
 
     return training;

@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,37 +39,45 @@ public class TraineeService {
 
   @Transactional
   public Trainee createTrainee(@Valid Trainee trainee) {
-    logger.info("Attempting to create trainee: {}",
-                trainee.getUser().getFirstName(),
-                trainee.getUser().getLastName());
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Creating trainee: {} {}", transactionId,
+            trainee.getUser().getFirstName(), trainee.getUser().getLastName());
 
-    List<Trainee> userlist = traineeRepository.findAll();
-    trainee.getUser().setUsername(UsernameGenerator.generateUsername(
-        trainee.getUser().getFirstName(), trainee.getUser().getLastName(),
-        userlist));
-    trainee.getUser().setPassword(generateRandomPassword());
+    try {
+      List<Trainee> userlist = traineeRepository.findAll();
+      trainee.getUser().setUsername(UsernameGenerator.generateUsername(
+              trainee.getUser().getFirstName(), trainee.getUser().getLastName(), userlist));
+      trainee.getUser().setPassword(generateRandomPassword());
 
-    traineeRepository.save(trainee);
-    logger.info("Trainee created successfully: {}",
-                trainee.getUser().getUsername());
-
-    return trainee;
+      traineeRepository.save(trainee);
+      logger.info("Transaction ID: {} - Trainee created successfully: {}",
+              transactionId, trainee.getUser().getUsername());
+      return trainee;
+    } catch (Exception e) {
+      logger.error("Transaction ID: {} - Error creating trainee: {}", transactionId, e.getMessage(), e);
+      throw e;
+    }
   }
 
   @Transactional
   public void deleteTrainee(Long traineeId) {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Deleting trainee with ID={}", transactionId, traineeId);
     traineeRepository.deleteById(traineeId);
+    logger.info("Transaction ID: {} - Trainee with ID={} deleted successfully", transactionId, traineeId);
   }
 
-  public Trainee selectTraineeByUsername(String username)
-      throws NotFoundException {
-    return traineeRepository.findByUser_Username(username).orElseThrow(
-        () -> new NotFoundException(username));
+  public Optional<Trainee> selectTraineeByUsername(String username) {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Fetching trainee by username: {}", transactionId, username);
+    return traineeRepository.findByUser_Username(username);
   }
 
   @Transactional
   public void changePassword(String username, String newPassword)
       throws EntityNotFoundException {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Changing password for trainee: {}", transactionId, username);
 
     Optional<Trainee> traineeOpt =
         traineeRepository.findByUser_Username(username);
@@ -76,13 +85,17 @@ public class TraineeService {
       Trainee trainee = traineeOpt.get();
       trainee.getUser().setPassword(newPassword);
       traineeRepository.save(trainee);
+      logger.info("Transaction ID: {} - Password changed for trainee: {}", transactionId, username);
     } else {
+      logger.error("Transaction ID: {} - Trainee not found: {}", transactionId, username);
       throw new EntityNotFoundException("Trainee not found");
     }
   }
 
   @Transactional
   public Trainee activateTrainee(String username) throws NotFoundException {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Activating trainee: {}", transactionId, username);
     Trainee trainee =
         traineeRepository.findByUser_Username(username).orElseThrow(
             () -> new NotFoundException("Not found" + username));
@@ -93,12 +106,15 @@ public class TraineeService {
     } else {
       trainee.getUser().setIsActive(true);
     }
-
+    logger.info("Transaction ID: {} - Trainee activated: {}", transactionId, username);
     return traineeRepository.save(trainee);
   }
 
   @Transactional
   public Trainee deactivateTrainee(String username) throws NotFoundException {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Deactivating trainee: {}", transactionId, username);
+
     Trainee trainee =
         traineeRepository.findByUser_Username(username).orElseThrow(
             () -> new NotFoundException("Not found" + username));
@@ -111,14 +127,15 @@ public class TraineeService {
     } else {
       trainee.getUser().setIsActive(false);
     }
-
+    logger.info("Transaction ID: {} - Trainee deactivated: {}", transactionId, username);
     return traineeRepository.save(trainee);
   }
 
   @Transactional
   public void deleteTraineeByUsername(String username)
       throws NotFoundException {
-    logger.info("Attempting to delete Trainee with Username: {}", username);
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Attempting to delete trainee: {}", transactionId, username);
 
     Trainee trainee =
         traineeRepository.findByUser_Username(username).orElseThrow(
@@ -129,7 +146,7 @@ public class TraineeService {
 
     traineeRepository.deleteByUser_Username(username);
 
-    logger.info("Trainee with Username: {} successfully deleted.", username);
+    logger.info("Transaction ID: {} - Trainee deleted: {}", transactionId, username);
   }
 
   @Transactional
@@ -137,42 +154,54 @@ public class TraineeService {
   getTraineeTrainingsByCriteria(String username, Date fromDate, Date toDate,
                                 String trainerName, String trainingType)
       throws NotFoundException {
+    logger.info("Fetching trainings for trainee: {}", username);
 
-    Optional<Trainee> traineeOptional =
-        traineeRepository.findByUser_Username(username);
+    Optional<Trainee> traineeOptional = traineeRepository.findByUser_Username(username);
     if (traineeOptional.isEmpty()) {
-      throw new NotFoundException("Not found" + username);
+      logger.error("Trainee not found: {}", username);
+      throw new NotFoundException("Not found: " + username);
     }
 
-    List<Training> trainings = traineeRepository.findTrainingsByCriteria(
-        username, fromDate, toDate, trainerName, trainingType);
-
+    List<Training> trainings = traineeRepository.findTrainingsByCriteria(username, fromDate, toDate, trainerName, trainingType);
+    logger.info("Found {} trainings for trainee: {}", trainings.size(), username);
     return trainings;
+  }
+
+  @Transactional
+  public List<Trainer> getTrainersList(Long id) {
+    logger.info("Fetching trainers for trainee ID={}", id);
+    List<Trainer> trainers = traineeRepository.findTrainers(id);
+    logger.info("Found {} trainers for trainee ID={}", trainers.size(), id);
+    return trainers;
   }
 
   @Transactional
   public List<Trainer> getUnassignedTrainersForTrainee(String username)
       throws NotFoundException {
+    logger.info("Fetching unassigned trainers for trainee: {}", username);
 
-    Optional<Trainee> traineeOptional =
-        traineeRepository.findByUser_Username(username);
+    Optional<Trainee> traineeOptional = traineeRepository.findByUser_Username(username);
     if (traineeOptional.isEmpty()) {
-      throw new NotFoundException(username);
+      logger.error("Trainee not found: {}", username);
+      throw new NotFoundException("Not found: " + username);
     }
+
     Trainee trainee = traineeOptional.get();
-    return trainerRepository.findTrainersNotAssignedToTrainee(trainee.getId());
+    List<Trainer> unassignedTrainers = trainerRepository.findTrainersNotAssignedToTrainee(trainee.getId());
+    logger.info("Found {} unassigned trainers for trainee: {}", unassignedTrainers.size(), username);
+    return unassignedTrainers;
   }
 
   @Transactional
   public Trainee updateTrainee(@Valid Trainee updatedTrainee)
       throws NotFoundException {
+    String transactionId = MDC.get("transactionId");
     Long id = updatedTrainee.getId();
-    logger.info("Attempting to update Trainer with ID: {}", id);
+    logger.info("Transaction ID: {} - Updating trainee with ID={}", transactionId, id);
 
-    Trainee trainee = traineeRepository.findById(id).orElseThrow(
-        () -> new NotFoundException("Not found" + id));
+    Trainee trainee = traineeRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Not found: " + id));
 
-    logger.info("Updating Trainer with ID: {}", id);
     trainee.getUser().setFirstName(updatedTrainee.getUser().getFirstName());
     trainee.getUser().setLastName(updatedTrainee.getUser().getLastName());
     trainee.getUser().setUsername(updatedTrainee.getUser().getUsername());
@@ -182,42 +211,39 @@ public class TraineeService {
     trainee.setAddress(updatedTrainee.getAddress());
 
     Trainee updated = traineeRepository.save(trainee);
-    logger.info("Trainer with ID: {} successfully updated", id);
-
+    logger.info("Transaction ID: {} - Trainee updated successfully: ID={}", transactionId, id);
     return updated;
   }
 
   @Transactional
   public Trainee assignOrRemoveTrainer(String traineeUsername,
                                        String trainerUsername, boolean assign) {
-    Trainee trainee =
-        traineeRepository.findByUser_Username(traineeUsername)
-            .orElseThrow(()
-                             -> new NotFoundException("Trainee not found: " +
-                                                      traineeUsername));
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - {} trainer {} to trainee {}", transactionId,
+            assign ? "Assigning" : "Removing", trainerUsername, traineeUsername);
 
-    Trainer trainer =
-        trainerRepository.findByUser_Username(trainerUsername)
-            .orElseThrow(()
-                             -> new NotFoundException("Trainer not found: " +
-                                                      trainerUsername));
+    Trainee trainee = traineeRepository.findByUser_Username(traineeUsername)
+            .orElseThrow(() -> new NotFoundException("Trainee not found: " + traineeUsername));
+
+    Trainer trainer = trainerRepository.findByUser_Username(trainerUsername)
+            .orElseThrow(() -> new NotFoundException("Trainer not found: " + trainerUsername));
 
     if (assign) {
       if (trainee.getTrainers().contains(trainer)) {
-        throw new IllegalArgumentException(
-            "Trainer is already assigned to this trainee.");
+        logger.warn("Transaction ID: {} - Trainer {} is already assigned to trainee {}",
+                transactionId, trainerUsername, traineeUsername);
+        throw new IllegalArgumentException("Trainer is already assigned to this trainee.");
       }
       trainee.getTrainers().add(trainer);
-      logger.info("Assigned trainer {} to trainee {}", trainerUsername,
-                  traineeUsername);
+      logger.info("Transaction ID: {} - Trainer {} assigned to trainee {}", transactionId, trainerUsername, traineeUsername);
     } else {
       if (!trainee.getTrainers().contains(trainer)) {
-        throw new IllegalArgumentException(
-            "Trainer is not assigned to this trainee.");
+        logger.warn("Transaction ID: {} - Trainer {} is not assigned to trainee {}",
+                transactionId, trainerUsername, traineeUsername);
+        throw new IllegalArgumentException("Trainer is not assigned to this trainee.");
       }
       trainee.getTrainers().remove(trainer);
-      logger.info("Removed trainer {} from trainee {}", trainerUsername,
-                  traineeUsername);
+      logger.info("Transaction ID: {} - Trainer {} removed from trainee {}", transactionId, trainerUsername, traineeUsername);
     }
 
     return traineeRepository.save(trainee);

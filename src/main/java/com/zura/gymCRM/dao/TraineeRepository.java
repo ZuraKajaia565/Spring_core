@@ -1,6 +1,7 @@
 package com.zura.gymCRM.dao;
 
 import com.zura.gymCRM.entities.Trainee;
+import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import java.util.List;
 import java.util.Optional;
@@ -29,4 +30,7 @@ public interface TraineeRepository extends JpaRepository<Trainee, Long> {
                           @Param("toDate") java.util.Date toDate,
                           @Param("trainerName") String trainerName,
                           @Param("trainingType") String trainingType);
+
+  @Query("SELECT t FROM Trainee tr JOIN tr.trainers t WHERE tr.id = :traineeId")
+  List<Trainer> findTrainers(@Param("traineeId") Long id);
 }
