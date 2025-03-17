@@ -4,16 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public class UpdateTrainerRequest {
-  @NotBlank(message = "username should be provided") private String username;
   @NotBlank(message = "firstname should be provided") private String firstName;
   @NotBlank(message = "lastname should be provided") private String lastName;
   @NotBlank(message = "specializzation should be provided") private String specialization;
   @NotNull(message = "active status should be provided") private Boolean isActive;
 
-  public UpdateTrainerRequest(String username, String firstName,
+  public UpdateTrainerRequest(String firstName,
                               String lastName, String specialization,
                               Boolean isActive) {
-    this.username = username;
     this.firstName = firstName;
     this.lastName = lastName;
     this.specialization = specialization;
@@ -21,10 +19,6 @@ public class UpdateTrainerRequest {
   }
 
   public UpdateTrainerRequest() {}
-
-  public String getUsername() { return username; }
-
-  public void setUsername(String username) { this.username = username; }
 
   public String getFirstName() { return firstName; }
 

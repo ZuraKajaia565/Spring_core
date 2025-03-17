@@ -59,11 +59,11 @@ public class TrainerController {
     }
   }
 
-  @GetMapping(value = "/profile", produces = org.springframework.http.MediaType
+  @GetMapping(value = "/{username}/account", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method="Get Trainer Profile", summary = "Get Trainer Profile")
   public ResponseEntity<?>
-  getTraineeProfile(@RequestParam String username) {
+  getTraineeProfile(@PathVariable String username) {
     Optional<Trainer> trainer = gymFacade.selectTrainerByUsername(username);
 
     if (trainer.isEmpty()) {
@@ -89,14 +89,14 @@ public class TrainerController {
   }
 
   @PutMapping(
-      value = "/profile",
+      value = "/{username}/account-update",
       consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Update Trainer Profile", summary = "Update Trainer Profile")
   public ResponseEntity<?>
-  updateTrainerProfile(@RequestBody UpdateTrainerRequest updateTrainerRequest) {
+  updateTrainerProfile(@PathVariable String username, @Valid @RequestBody UpdateTrainerRequest updateTrainerRequest) {
     Optional<Trainer> existingTrainer =
-        gymFacade.selectTrainerByUsername(updateTrainerRequest.getUsername());
+        gymFacade.selectTrainerByUsername(username);
 
     if (existingTrainer.isEmpty()) {
       return ResponseEntity.badRequest().body("Trainer not found");
@@ -129,11 +129,11 @@ public class TrainerController {
   }
 
   @GetMapping(
-      value = "/trainings",
+      value = "/{username}/trainings",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Get Trainer Trainings List", summary = "Get Trainer Trainings List")
   public ResponseEntity<?>
-  getTraineeTrainingsList(@RequestParam String username,
+  getTraineeTrainingsList(@PathVariable String username,
                           @RequestParam(required = false) Date periodFrom,
                           @RequestParam(required = false) Date periodTo,
                           @RequestParam(required = false) String traineeName) {
@@ -160,24 +160,24 @@ public class TrainerController {
     return ResponseEntity.ok(trainingInfos);
   }
 
-  @PatchMapping("/activate")
+  @PatchMapping("/{username}/activate")
   @Operation(method="Activate Trainer", summary = "Activate Trainer")
   public ResponseEntity<?>
-  activateTrainee(@RequestBody ActivateDeActivateRequest request) {
+  activateTrainee(@PathVariable String username, @RequestBody ActivateDeActivateRequest request) {
     try {
-      Trainer trainer = gymFacade.activateTrainer(request.getUsername());
+      Trainer trainer = gymFacade.activateTrainer(username);
       return ResponseEntity.ok(trainer);
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
 
-  @PatchMapping("/deactivate")
+  @PatchMapping("/{username}/deactivate")
   @Operation(method="De-activate Trainer", summary = "De-activate Trainer")
   public ResponseEntity<?>
-  deactivateTrainee(@RequestBody ActivateDeActivateRequest request) {
+  deactivateTrainee(@PathVariable String username, @RequestBody ActivateDeActivateRequest request) {
     try {
-      Trainer trainer = gymFacade.deactivateTrainer(request.getUsername());
+      Trainer trainer = gymFacade.deactivateTrainer(username);
       return ResponseEntity.ok(trainer);
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());

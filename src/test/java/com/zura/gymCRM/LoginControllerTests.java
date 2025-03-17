@@ -112,8 +112,7 @@ public class LoginControllerTests {
         String newPassword = "ewPassword";
 
 
-        mockMvc.perform(put("/api/changePassword")
-                        .param("username", username)
+        mockMvc.perform(put("/api/{username}/changePassword", username)
                         .param("oldPassword", oldPassword)
                         .param("newPassword", newPassword)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -131,8 +130,7 @@ public class LoginControllerTests {
         String oldPassword = trainer.getUser().getPassword();
         String newPassword = "1234567898";
 
-        mockMvc.perform(put("/api/changePassword")
-                        .param("username", username)
+        mockMvc.perform(put("/api/{username}/changePassword", username)
                         .param("oldPassword", oldPassword)
                         .param("newPassword", newPassword)
                         .contentType(MediaType.APPLICATION_JSON))

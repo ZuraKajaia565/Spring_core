@@ -76,8 +76,7 @@ class TrainerControllerTest {
         String username = "Zura.Doe";
         Trainer trainer = gymFacade.selectTrainerByUsername(username).orElse(null);
 
-            mockMvc.perform(get("/api/trainers/profile")
-                            .param("username", username)
+            mockMvc.perform(get("/api/trainers/{username}/account", username)
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.firstName").value(trainer.getUser().getFirstName()))
@@ -92,8 +91,7 @@ class TrainerControllerTest {
         String username = "John.Doe123";
         Trainer trainer = gymFacade.selectTrainerByUsername(username).orElse(null);
 
-        mockMvc.perform(get("/api/trainers/profile")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainers/{username}/account", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
@@ -106,12 +104,12 @@ class TrainerControllerTest {
         assertTrue(existingTrainer.isPresent(), "Trainer should exist for update");
 
         UpdateTrainerRequest updateTrainerRequest = new UpdateTrainerRequest();
-        updateTrainerRequest.setUsername(existingUsername);
         updateTrainerRequest.setFirstName("Zura");
         updateTrainerRequest.setLastName("Updated");
+        updateTrainerRequest.setSpecialization("Cardio");
         updateTrainerRequest.setIsActive(true);
 
-        mockMvc.perform(put("/api/trainers/profile")
+        mockMvc.perform(put("/api/trainers/{username}/account-update", existingUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateTrainerRequest)))
                 .andExpect(status().isOk())
@@ -125,11 +123,11 @@ class TrainerControllerTest {
     void updateTrainerProfile_Failure_TrainerNotFound() throws Exception {
         String nonExistentUsername = "NonExistentUser";
         UpdateTrainerRequest updateTrainerRequest = new UpdateTrainerRequest();
-        updateTrainerRequest.setUsername(nonExistentUsername);
         updateTrainerRequest.setFirstName("Unknown");
         updateTrainerRequest.setLastName("User");
+        updateTrainerRequest.setSpecialization("Cardio");
         updateTrainerRequest.setIsActive(true);
-        mockMvc.perform(put("/api/trainers/profile")
+        mockMvc.perform(put("/api/trainers/{username}/account-update", nonExistentUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateTrainerRequest)))
                 .andExpect(status().isBadRequest())
@@ -141,12 +139,11 @@ class TrainerControllerTest {
     void activateTrainer_Success() throws Exception {
         String usernameToActivate = "Zura.Doe";
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername(usernameToActivate);
 
         Trainer trainerBeforeActivation = gymFacade.selectTrainerByUsername(usernameToActivate).orElse(null);
         assertNotNull(trainerBeforeActivation, "Trainer should exist for activation test");
 
-        mockMvc.perform(patch("/api/trainers/activate")
+        mockMvc.perform(patch("/api/trainers/{username}/activate", usernameToActivate)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -161,9 +158,8 @@ class TrainerControllerTest {
     void activateTrainer_Failure_TrainerNotFound() throws Exception {
         String invalidUsername = "NonExistentUser";
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername(invalidUsername);
 
-        mockMvc.perform(patch("/api/trainers/activate")
+        mockMvc.perform(patch("/api/trainers/{username}/activate", invalidUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -174,13 +170,12 @@ class TrainerControllerTest {
     void deactivateTrainer_Success() throws Exception {
         String usernameToDeactivate = "Zura.Doe";
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername(usernameToDeactivate);
 
         Trainer trainerBeforeDeactivation = gymFacade.selectTrainerByUsername(usernameToDeactivate).orElse(null);
         assertNotNull(trainerBeforeDeactivation, "Trainer should exist for deactivation test");
         assertTrue(trainerBeforeDeactivation.getUser().getIsActive(), "Trainer should initially be active");
 
-        mockMvc.perform(patch("/api/trainers/deactivate")
+        mockMvc.perform(patch("/api/trainers/{username}/deactivate", usernameToDeactivate)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -195,9 +190,8 @@ class TrainerControllerTest {
     void deactivateTrainer_Failure_TrainerNotFound() throws Exception {
         String invalidUsername = "NonExistentUser";
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername(invalidUsername);
 
-        mockMvc.perform(patch("/api/trainers/deactivate")
+        mockMvc.perform(patch("/api/trainers/{username}/deactivate", invalidUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -226,8 +220,7 @@ class TrainerControllerTest {
                 new SimpleDateFormat("yyyy-MM-dd").parse("2025-03-01"), 45);
 
 
-        mockMvc.perform(get("/api/trainers/trainings")
-                        .param("username", trainerUsername)
+        mockMvc.perform(get("/api/trainers/{username}/trainings", trainerUsername)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].trainingName").value("Yoga Class"))
@@ -239,8 +232,7 @@ class TrainerControllerTest {
     void getTraineeTrainingsList_Failure_TrainerNotFound() throws Exception {
         String invalidTrainerUsername = "NonExistentTrainer";
 
-        mockMvc.perform(get("/api/trainers/trainings")
-                        .param("username", invalidTrainerUsername)
+        mockMvc.perform(get("/api/trainers/{username}/trainings", invalidTrainerUsername)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }

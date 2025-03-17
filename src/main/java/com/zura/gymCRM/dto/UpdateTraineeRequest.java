@@ -6,9 +6,6 @@ import java.util.Date;
 
 public class UpdateTraineeRequest {
 
-  @NotBlank(message = "Username is required")
-  private String username;
-
   @NotBlank(message = "First name is required")
   private String firstName;
 
@@ -22,9 +19,8 @@ public class UpdateTraineeRequest {
   @NotNull(message = "Active status is required")
   private Boolean isActive;
 
-  public UpdateTraineeRequest(String username, String firstName, String lastName,
+  public UpdateTraineeRequest(String firstName, String lastName,
                               Date dateOfBirth, String address, boolean isActive) {
-    this.username = username;
     this.firstName = firstName;
     this.lastName = lastName;
     this.dateOfBirth = dateOfBirth;
@@ -32,9 +28,6 @@ public class UpdateTraineeRequest {
     this.isActive = isActive;
   }
 
-  public String getUsername() { return username; }
-
-  public void setUsername(String username) { this.username = username; }
 
   public String getFirstName() { return firstName; }
 

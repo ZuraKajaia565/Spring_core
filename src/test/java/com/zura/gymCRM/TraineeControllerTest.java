@@ -79,8 +79,7 @@ public class TraineeControllerTest {
     void getTraineeProfile_Success() throws Exception {
         String username = "Jon1.Doe";
 
-        mockMvc.perform(get("/api/trainees/profile")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainees/{username}/account", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username))
@@ -96,8 +95,7 @@ public class TraineeControllerTest {
     void getTraineeProfile_Failure_TraineeNotFound() throws Exception {
         String username = "non_existing_user";
 
-        mockMvc.perform(get("/api/trainees/profile")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainees/{username}/account", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Trainee not found"));
@@ -110,12 +108,12 @@ public class TraineeControllerTest {
         String username = "Jon1.Doe";
 
         UpdateTraineeRequest request = new UpdateTraineeRequest(
-                username, "Jon", "UpdatedLast", new Date(), "Updated Address", true
+                 "Jon", "UpdatedLast", new Date(), "Updated Address", true
         );
 
         String requestJson = objectMapper.writeValueAsString(request);
 
-        mockMvc.perform(put("/api/trainees/profile")
+        mockMvc.perform(put("/api/trainees/{username}/account-update", username)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isOk())
@@ -134,11 +132,11 @@ public class TraineeControllerTest {
 
 
         UpdateTraineeRequest request = new UpdateTraineeRequest(
-                username, "John", "UpdatedLast", new Date(), "Updated Address", true
+                 "John", "UpdatedLast", new Date(), "Updated Address", true
         );
 
         String requestJson = objectMapper.writeValueAsString(request);
-        mockMvc.perform(put("/api/trainees/profile")
+        mockMvc.perform(put("/api/trainees/{username}/account-update", username)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isBadRequest());
@@ -150,8 +148,7 @@ public class TraineeControllerTest {
         String username = "Jon1.Doe";
         Optional<TrainingType> trainingType = gymFacade.selectTrainingTypeByID(1L);
         gymFacade.addTrainer("Jan", "Do", true, trainingType.get());
-        mockMvc.perform(get("/api/trainees/unassigned-trainers")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainees/{username}/unassigned-trainers", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
@@ -165,8 +162,7 @@ public class TraineeControllerTest {
         String username = "Jon45.Doe";
         Optional<TrainingType> trainingType = gymFacade.selectTrainingTypeByID(1L);
         gymFacade.addTrainer("Jane", "Do", true, trainingType.get());
-        mockMvc.perform(get("/api/trainees/unassigned-trainers")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainees/{username}/unassigned-trainers", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
@@ -177,9 +173,9 @@ public class TraineeControllerTest {
         Optional<TrainingType> trainingType = gymFacade.selectTrainingTypeByID(1L);
         gymFacade.addTrainer("jan", "doe", true, trainingType.get());
         gymFacade.addTrainer("sam", "smith", true, trainingType.get());
-        mockMvc.perform(put("/api/trainees/update-trainers")
+        mockMvc.perform(put("/api/trainees/{username}/update-trainers", "Jon1.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"traineeUsername\":\"Jon1.Doe\", \"trainersList\": [\"jan.doe\", \"sam.smith\"]}"))
+                        .content("{\"trainersList\": [\"jan.doe\", \"sam.smith\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].username").value("jan.doe"))
                 .andExpect(jsonPath("$[0].firstName").value("jan"))
@@ -192,9 +188,9 @@ public class TraineeControllerTest {
     @Test
     @Order(10)
     void updateTraineeTrainerList_TraineeNotFound() throws Exception {
-        mockMvc.perform(put("/api/trainees/update-trainers")
+        mockMvc.perform(put("/api/trainees/{username}/update-trainers", "nonexistent.username")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"traineeUsername\":\"nonexistent.username\", \"trainersList\": [\"jan.doe\", \"sam.smith\"]}"))
+                        .content("{\"trainersList\": [\"jan.doe\", \"sam.smith\"]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Trainee not found"));
     }
@@ -207,8 +203,7 @@ public class TraineeControllerTest {
         Trainer trainer =  gymFacade.addTrainer("Jan", "Do", true, trainingType.get());
         Training training = gymFacade.addTraining(trainee, trainer, "yoga", trainingType.get(),new Date(), 60);
 
-        mockMvc.perform(get("/api/trainees/trainings")
-                        .param("username", "Jane.Doe")
+        mockMvc.perform(get("/api/trainees/{username}/trainings", "Jane.Doe")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
@@ -220,8 +215,7 @@ public class TraineeControllerTest {
     @Test
     @Order(12)
     void getTraineeTrainingsList_TraineeNotFound() throws Exception {
-        mockMvc.perform(get("/api/trainees/trainings")
-                        .param("username", "NonExistentUser")
+        mockMvc.perform(get("/api/trainees/{username}/trainings", "NonExistentUser")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Trainee not found"));
@@ -232,14 +226,13 @@ public class TraineeControllerTest {
     void deleteTrainee_Success() throws Exception {
         String username = "Jon1.Doe";
 
-        mockMvc.perform(delete("/api/trainees/{username}", username)
+        mockMvc.perform(delete("/api/trainees/{username}/delete", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message")
                         .value("Trainee deleted successfully"));
 
-        mockMvc.perform(get("/api/trainees/profile")
-                        .param("username", username)
+        mockMvc.perform(get("/api/trainees/{username}/account", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
@@ -248,9 +241,10 @@ public class TraineeControllerTest {
     @Order(14)
     void activateTrainee_Success() throws Exception {
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername("Jane.Doe");
+        request.setIsActive(true);
 
-        mockMvc.perform(patch("/api/trainees/activate")
+
+        mockMvc.perform(patch("/api/trainees/{username}/activate", "Jane.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -262,9 +256,8 @@ public class TraineeControllerTest {
     @Order(15)
     void activateTrainee_Failure() throws Exception {
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername("InvalidUser");
-
-        mockMvc.perform(patch("/api/trainees/activate")
+        request.setIsActive(false);
+        mockMvc.perform(patch("/api/trainees/{username}/activate", "InvalidUser")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -274,9 +267,8 @@ public class TraineeControllerTest {
     @Order(16)
     void deactivateTrainee_Success() throws Exception {
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername("Jane.Doe");
-
-        mockMvc.perform(patch("/api/trainees/deactivate")
+        request.setIsActive(true);
+        mockMvc.perform(patch("/api/trainees/{username}/deactivate", "Jane.Doe")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -288,9 +280,8 @@ public class TraineeControllerTest {
     @Order(17)
     void deactivateTrainee_Failure() throws Exception {
         ActivateDeActivateRequest request = new ActivateDeActivateRequest();
-        request.setUsername("InvalidUser");
-
-        mockMvc.perform(patch("/api/trainees/deactivate")
+        request.setIsActive(true);
+        mockMvc.perform(patch("/api/trainees/{username}/deactivate", "InvalidUser")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());

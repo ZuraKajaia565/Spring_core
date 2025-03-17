@@ -52,11 +52,11 @@ public class TraineeController {
     }
   }
 
-  @GetMapping(value = "/profile", produces = org.springframework.http.MediaType
+  @GetMapping(value = "/{username}/account", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method = "Get Trainee Profile", summary = "Get Trainee Profile")
   public ResponseEntity<?>
-  getTraineeProfile(@RequestParam String username) {
+  getTraineeProfile(@PathVariable String username) {
     Optional<Trainee> trainee = gymFacade.selectTraineeByusername(username);
 
     if (trainee.isEmpty()) {
@@ -84,13 +84,13 @@ public class TraineeController {
     return ResponseEntity.ok(response);
   }
 
-  @PutMapping(value = "/profile", produces = org.springframework.http.MediaType
+  @PutMapping(value = "/{username}/account-update", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method = "Update Trainee Profile", summary = "Update Trainee Profile")
   public ResponseEntity<?>
-  updateTraineeProfile(@RequestBody UpdateTraineeRequest request) {
+  updateTraineeProfile(@Valid @RequestBody UpdateTraineeRequest request, @PathVariable String username) {
     Optional<Trainee> trainee =
-        gymFacade.selectTraineeByusername(request.getUsername());
+        gymFacade.selectTraineeByusername(username);
 
     if (trainee.isEmpty()) {
       return ResponseEntity.badRequest().body("Trainee not found");
@@ -131,11 +131,11 @@ public class TraineeController {
   }
 
   @GetMapping(
-      value = "/unassigned-trainers",
+      value = "/{username}/unassigned-trainers",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Get not assigned on trainee active trainers", summary = "Get not assigned on trainee active trainers")
   public ResponseEntity<?>
-  getUnassignedActiveTrainers(@RequestParam String username) {
+  getUnassignedActiveTrainers(@PathVariable String username) {
     Optional<Trainee> trainee = gymFacade.selectTraineeByusername(username);
 
     if (trainee.isEmpty()) {
@@ -166,21 +166,21 @@ public class TraineeController {
   }
 
   @PutMapping(
-      value = "/update-trainers",
+      value = "/{username}/update-trainers",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Update Trainee's Trainer List", summary = "Update Trainee's Trainer List")
   public ResponseEntity<?>
   updateTraineeTrainerList(
-      @RequestBody UpdateTraineeTrainerRequest updateRequest) {
+      @PathVariable String username, @Valid @RequestBody UpdateTraineeTrainerRequest updateRequest) {
     Optional<Trainee> trainee =
-        gymFacade.selectTraineeByusername(updateRequest.getTraineeUsername());
+        gymFacade.selectTraineeByusername(username);
 
     if (trainee.isEmpty()) {
       return ResponseEntity.badRequest().body("Trainee not found");
     }
 
     boolean insert = true;
-    updateRequest.getTrainersList().forEach(username -> gymFacade.updateTraineeTrainerRelationship(updateRequest.getTraineeUsername(), username, insert));
+    updateRequest.getTrainersList().forEach(user -> gymFacade.updateTraineeTrainerRelationship(username, user, insert));
 
     List<TrainerInfo> trainerInfos =
         gymFacade.getTrainersListofTrainee(trainee.get()).stream()
@@ -196,15 +196,14 @@ public class TraineeController {
   }
 
   @GetMapping(
-      value = "/trainings",
+      value = "/{username}/trainings",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Get Trainee Trainings List", summary = "Get Trainee Trainings List")
   public ResponseEntity<?>
-  getTraineeTrainingsList(@RequestParam String username,
-                          @RequestParam(required = false) Date periodFrom,
+  getTraineeTrainingsList(@RequestParam(required = false) Date periodFrom,
                           @RequestParam(required = false) Date periodTo,
                           @RequestParam(required = false) String trainerName,
-                          @RequestParam(required = false) String trainingType) {
+                          @RequestParam(required = false) String trainingType, @PathVariable String username) {
 
     Optional<Trainee> trainee = gymFacade.selectTraineeByusername(username);
     if (trainee.isEmpty()) {
@@ -228,31 +227,31 @@ public class TraineeController {
     return ResponseEntity.ok(trainingInfos);
   }
 
-  @PatchMapping("/activate")
+  @PatchMapping("/{username}/activate")
   @Operation(method="Activate Trainee", summary = "Activate Trainee")
   public ResponseEntity<?>
-  activateTrainee(@RequestBody ActivateDeActivateRequest request) {
+  activateTrainee(@PathVariable String username, @Valid @RequestBody ActivateDeActivateRequest request) {
     try {
-      Trainee trainee = gymFacade.activateTrainee(request.getUsername());
+      Trainee trainee = gymFacade.activateTrainee(username);
       return ResponseEntity.ok(trainee);
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
 
-  @PatchMapping("/deactivate")
+  @PatchMapping("/{username}/deactivate")
   @Operation(method="De-Activate Trainee", summary = "De-Activate Trainee")
   public ResponseEntity<?>
-  deactivateTrainee(@RequestBody ActivateDeActivateRequest request) {
+  deactivateTrainee(@PathVariable String username,@Valid @RequestBody ActivateDeActivateRequest request) {
     try {
-      Trainee trainee = gymFacade.deactivateTrainee(request.getUsername());
+      Trainee trainee = gymFacade.deactivateTrainee(username);
       return ResponseEntity.ok(trainee);
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
 
-  @DeleteMapping("/{username}")
+  @DeleteMapping("/{username}/delete")
   @Operation(method="Delete Trainee Profile", summary = "Delete Trainee Profile")
   public ResponseEntity<Map<String, String>>
   deleteTrainee(@PathVariable String username) {
