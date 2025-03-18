@@ -35,7 +35,7 @@ public class TrainingTypeController {
                   @ApiResponse(responseCode = "500",
                           description = "Internal server error")
           })
-  @GetMapping("/training-types")
+  @GetMapping("/trainingTypes")
   public ResponseEntity<?>
   getTrainingTypes() {
     List<TrainingType> trainingTypes = gymFacade.selectAllTrainings();

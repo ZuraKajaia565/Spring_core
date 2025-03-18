@@ -34,7 +34,7 @@ public class TraineeController {
 
   public TraineeController(GymFacade gymFacade) { this.gymFacade = gymFacade; }
 
-  @PostMapping("/register")
+  @PostMapping()
   @Operation(summary = "Trainee Registration", description = "Trainee Registration")
   public ResponseEntity<?>
   registerTrainee(@RequestBody @Valid TraineeRegistrationRequest traineeDTO) {
@@ -52,7 +52,7 @@ public class TraineeController {
     }
   }
 
-  @GetMapping(value = "/{username}/account", produces = org.springframework.http.MediaType
+  @GetMapping(value = "/{username}", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method = "Get Trainee Profile", summary = "Get Trainee Profile")
   public ResponseEntity<?>
@@ -84,7 +84,7 @@ public class TraineeController {
     return ResponseEntity.ok(response);
   }
 
-  @PutMapping(value = "/{username}/account-update", produces = org.springframework.http.MediaType
+  @PutMapping(value = "/{username}", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method = "Update Trainee Profile", summary = "Update Trainee Profile")
   public ResponseEntity<?>
@@ -131,7 +131,7 @@ public class TraineeController {
   }
 
   @GetMapping(
-      value = "/{username}/unassigned-trainers",
+      value = "/{username}/available-trainers",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Get not assigned on trainee active trainers", summary = "Get not assigned on trainee active trainers")
   public ResponseEntity<?>
@@ -166,7 +166,7 @@ public class TraineeController {
   }
 
   @PutMapping(
-      value = "/{username}/update-trainers",
+      value = "/{username}/trainers",
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Update Trainee's Trainer List", summary = "Update Trainee's Trainer List")
   public ResponseEntity<?>
@@ -227,31 +227,31 @@ public class TraineeController {
     return ResponseEntity.ok(trainingInfos);
   }
 
-  @PatchMapping("/{username}/activate")
-  @Operation(method="Activate Trainee", summary = "Activate Trainee")
-  public ResponseEntity<?>
-  activateTrainee(@PathVariable String username, @Valid @RequestBody ActivateDeActivateRequest request) {
+  @PatchMapping("/{username}/status")
+  @Operation(summary = "Update trainee active status")
+  public ResponseEntity<?> updateTraineeStatus(
+          @PathVariable String username,
+          @Valid @RequestBody Map<String, Boolean> statusUpdate) {
+
     try {
-      Trainee trainee = gymFacade.activateTrainee(username);
-      return ResponseEntity.ok(trainee);
+      boolean isActive = statusUpdate.get("active");
+      Trainee trainee = isActive
+              ? gymFacade.activateTrainee(username)
+              : gymFacade.deactivateTrainee(username);
+
+      return ResponseEntity.ok(
+              Map.of(
+                      "username", trainee.getUser().getUsername(),
+                      "active", trainee.getUser().getIsActive()
+              )
+      );
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", e.getMessage()));
     }
   }
 
-  @PatchMapping("/{username}/deactivate")
-  @Operation(method="De-Activate Trainee", summary = "De-Activate Trainee")
-  public ResponseEntity<?>
-  deactivateTrainee(@PathVariable String username,@Valid @RequestBody ActivateDeActivateRequest request) {
-    try {
-      Trainee trainee = gymFacade.deactivateTrainee(username);
-      return ResponseEntity.ok(trainee);
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
-
-  @DeleteMapping("/{username}/delete")
+  @DeleteMapping("/{username}")
   @Operation(method="Delete Trainee Profile", summary = "Delete Trainee Profile")
   public ResponseEntity<Map<String, String>>
   deleteTrainee(@PathVariable String username) {

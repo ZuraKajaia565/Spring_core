@@ -26,6 +26,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.text.SimpleDateFormat;
+import java.util.Map;
 import java.util.Optional;
 
 @SpringBootTest
@@ -51,7 +52,7 @@ class TrainerControllerTest {
         assertTrue(trainingType.isPresent());
         TrainerRegistrationRequest request = new TrainerRegistrationRequest("Zura", "Doe", trainingType.get());
 
-        mockMvc.perform(post("/api/trainers/register")
+        mockMvc.perform(post("/api/trainers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -64,7 +65,7 @@ class TrainerControllerTest {
         TrainingType invalidTrainingType = new TrainingType("Cardio12");
         TrainerRegistrationRequest request = new TrainerRegistrationRequest("John", "Doe", invalidTrainingType);
 
-        mockMvc.perform(post("/api/trainers/register")
+        mockMvc.perform(post("/api/trainers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().is5xxServerError());
@@ -76,7 +77,7 @@ class TrainerControllerTest {
         String username = "Zura.Doe";
         Trainer trainer = gymFacade.selectTrainerByUsername(username).orElse(null);
 
-            mockMvc.perform(get("/api/trainers/{username}/account", username)
+            mockMvc.perform(get("/api/trainers/{username}", username)
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.firstName").value(trainer.getUser().getFirstName()))
@@ -91,7 +92,7 @@ class TrainerControllerTest {
         String username = "John.Doe123";
         Trainer trainer = gymFacade.selectTrainerByUsername(username).orElse(null);
 
-        mockMvc.perform(get("/api/trainers/{username}/account", username)
+        mockMvc.perform(get("/api/trainers/{username}", username)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
@@ -109,7 +110,7 @@ class TrainerControllerTest {
         updateTrainerRequest.setSpecialization("Cardio");
         updateTrainerRequest.setIsActive(true);
 
-        mockMvc.perform(put("/api/trainers/{username}/account-update", existingUsername)
+        mockMvc.perform(put("/api/trainers/{username}", existingUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateTrainerRequest)))
                 .andExpect(status().isOk())
@@ -127,7 +128,7 @@ class TrainerControllerTest {
         updateTrainerRequest.setLastName("User");
         updateTrainerRequest.setSpecialization("Cardio");
         updateTrainerRequest.setIsActive(true);
-        mockMvc.perform(put("/api/trainers/{username}/account-update", nonExistentUsername)
+        mockMvc.perform(put("/api/trainers/{username}", nonExistentUsername)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateTrainerRequest)))
                 .andExpect(status().isBadRequest())
@@ -136,17 +137,19 @@ class TrainerControllerTest {
 
     @Test
     @Order(7)
-    void activateTrainer_Success() throws Exception {
+    void updateTrainerStatus_Activate_Success() throws Exception {
         String usernameToActivate = "Zura.Doe";
-        ActivateDeActivateRequest request = new ActivateDeActivateRequest();
+        Map<String, Boolean> statusUpdate = Map.of("active", true);
 
         Trainer trainerBeforeActivation = gymFacade.selectTrainerByUsername(usernameToActivate).orElse(null);
         assertNotNull(trainerBeforeActivation, "Trainer should exist for activation test");
 
-        mockMvc.perform(patch("/api/trainers/{username}/activate", usernameToActivate)
+        mockMvc.perform(patch("/api/trainers/{username}/status", usernameToActivate)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                        .content(objectMapper.writeValueAsString(statusUpdate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(usernameToActivate))
+                .andExpect(jsonPath("$.active").value(true));
 
         Trainer trainerAfterActivation = gymFacade.selectTrainerByUsername(usernameToActivate).orElse(null);
         assertNotNull(trainerAfterActivation, "Trainer should exist after activation");
@@ -155,30 +158,33 @@ class TrainerControllerTest {
 
     @Test
     @Order(8)
-    void activateTrainer_Failure_TrainerNotFound() throws Exception {
+    void updateTrainerStatus_Activate_Failure_TrainerNotFound() throws Exception {
         String invalidUsername = "NonExistentUser";
-        ActivateDeActivateRequest request = new ActivateDeActivateRequest();
+        Map<String, Boolean> statusUpdate = Map.of("active", true);
 
-        mockMvc.perform(patch("/api/trainers/{username}/activate", invalidUsername)
+        mockMvc.perform(patch("/api/trainers/{username}/status", invalidUsername)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(statusUpdate)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
     @Order(9)
-    void deactivateTrainer_Success() throws Exception {
+    void updateTrainerStatus_Deactivate_Success() throws Exception {
         String usernameToDeactivate = "Zura.Doe";
-        ActivateDeActivateRequest request = new ActivateDeActivateRequest();
+        Map<String, Boolean> statusUpdate = Map.of("active", false);
 
         Trainer trainerBeforeDeactivation = gymFacade.selectTrainerByUsername(usernameToDeactivate).orElse(null);
         assertNotNull(trainerBeforeDeactivation, "Trainer should exist for deactivation test");
         assertTrue(trainerBeforeDeactivation.getUser().getIsActive(), "Trainer should initially be active");
 
-        mockMvc.perform(patch("/api/trainers/{username}/deactivate", usernameToDeactivate)
+        mockMvc.perform(patch("/api/trainers/{username}/status", usernameToDeactivate)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                        .content(objectMapper.writeValueAsString(statusUpdate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value(usernameToDeactivate))
+                .andExpect(jsonPath("$.active").value(false));
 
         Trainer trainerAfterDeactivation = gymFacade.selectTrainerByUsername(usernameToDeactivate).orElse(null);
         assertNotNull(trainerAfterDeactivation, "Trainer should exist after deactivation");
@@ -187,14 +193,15 @@ class TrainerControllerTest {
 
     @Test
     @Order(10)
-    void deactivateTrainer_Failure_TrainerNotFound() throws Exception {
+    void updateTrainerStatus_Deactivate_Failure_TrainerNotFound() throws Exception {
         String invalidUsername = "NonExistentUser";
-        ActivateDeActivateRequest request = new ActivateDeActivateRequest();
+        Map<String, Boolean> statusUpdate = Map.of("active", false);
 
-        mockMvc.perform(patch("/api/trainers/{username}/deactivate", invalidUsername)
+        mockMvc.perform(patch("/api/trainers/{username}/status", invalidUsername)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(statusUpdate)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     @Test

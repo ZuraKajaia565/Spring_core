@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -33,7 +34,7 @@ public class TrainerController {
 
   public TrainerController(GymFacade gymFacade) { this.gymFacade = gymFacade; }
 
-  @PostMapping("/register")
+  @PostMapping("")
   @Operation(summary = "Trainer Registration")
   public ResponseEntity<?>
   registerTrainee(@RequestBody @Valid TrainerRegistrationRequest trainerDTO) {
@@ -59,7 +60,7 @@ public class TrainerController {
     }
   }
 
-  @GetMapping(value = "/{username}/account", produces = org.springframework.http.MediaType
+  @GetMapping(value = "/{username}", produces = org.springframework.http.MediaType
                                                  .APPLICATION_JSON_VALUE)
   @Operation(method="Get Trainer Profile", summary = "Get Trainer Profile")
   public ResponseEntity<?>
@@ -89,7 +90,7 @@ public class TrainerController {
   }
 
   @PutMapping(
-      value = "/{username}/account-update",
+      value = "/{username}",
       consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
       produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
   @Operation(method="Update Trainer Profile", summary = "Update Trainer Profile")
@@ -160,27 +161,27 @@ public class TrainerController {
     return ResponseEntity.ok(trainingInfos);
   }
 
-  @PatchMapping("/{username}/activate")
-  @Operation(method="Activate Trainer", summary = "Activate Trainer")
-  public ResponseEntity<?>
-  activateTrainee(@PathVariable String username, @RequestBody ActivateDeActivateRequest request) {
-    try {
-      Trainer trainer = gymFacade.activateTrainer(username);
-      return ResponseEntity.ok(trainer);
-    } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
+  @PatchMapping("/{username}/status")
+  @Operation(summary = "Update trainer active status")
+  public ResponseEntity<?> updateTrainerStatus(
+          @PathVariable String username,
+          @Valid @RequestBody Map<String, Boolean> statusUpdate) {
 
-  @PatchMapping("/{username}/deactivate")
-  @Operation(method="De-activate Trainer", summary = "De-activate Trainer")
-  public ResponseEntity<?>
-  deactivateTrainee(@PathVariable String username, @RequestBody ActivateDeActivateRequest request) {
     try {
-      Trainer trainer = gymFacade.deactivateTrainer(username);
-      return ResponseEntity.ok(trainer);
+      boolean isActive = statusUpdate.get("active");
+      Trainer trainer = isActive
+              ? gymFacade.activateTrainer(username)
+              : gymFacade.deactivateTrainer(username);
+
+      return ResponseEntity.ok(
+              Map.of(
+                      "username", trainer.getUser().getUsername(),
+                      "active", trainer.getUser().getIsActive()
+              )
+      );
     } catch (Exception e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", e.getMessage()));
     }
   }
 }

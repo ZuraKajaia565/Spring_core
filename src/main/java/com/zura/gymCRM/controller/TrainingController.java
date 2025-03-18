@@ -22,7 +22,7 @@ public class TrainingController {
 
   public TrainingController(GymFacade gymFacade) { this.gymFacade = gymFacade; }
 
-  @PostMapping(value = "/add", produces = org.springframework.http.MediaType
+  @PostMapping(value = "", produces = org.springframework.http.MediaType
                                               .APPLICATION_JSON_VALUE)
   @Operation(method="Add Training", summary = "Add Training")
   public ResponseEntity<?>

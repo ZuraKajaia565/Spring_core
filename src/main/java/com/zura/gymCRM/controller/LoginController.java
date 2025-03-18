@@ -47,7 +47,7 @@ public class LoginController {
   }
 
   @Operation(summary = "change password", method = "Change Login", description = "Change Login credentials")
-  @PutMapping("/{username}/changePassword")
+  @PutMapping("/{username}/password")
   public ResponseEntity<LoginResponse>
   changePassword(@PathVariable String username,
                  @RequestParam String oldPassword,

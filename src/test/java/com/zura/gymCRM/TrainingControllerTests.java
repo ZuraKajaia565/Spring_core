@@ -54,7 +54,7 @@ public class TrainingControllerTests {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         String trainingDate = dateFormat.format(new Date());
 
-        mockMvc.perform(post("/training/add")
+        mockMvc.perform(post("/training")
                         .param("traineeUsername", traineeUsername)
                         .param("trainerUsername", trainerUsername)
                         .param("trainingName", "Cardio Session")
@@ -77,7 +77,7 @@ public class TrainingControllerTests {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         String trainingDate = dateFormat.format(new Date());
 
-        mockMvc.perform(post("/training/add")
+        mockMvc.perform(post("/training")
                         .param("traineeUsername", "InvalidTrainee")
                         .param("trainerUsername", validTrainerUsername)
                         .param("trainingName", "Strength Training")
@@ -91,7 +91,7 @@ public class TrainingControllerTests {
         String validTraineeUsername = validTrainee.getUser().getUsername();
 
 
-        mockMvc.perform(post("/training/add")
+        mockMvc.perform(post("/training")
                         .param("traineeUsername", validTraineeUsername)
                         .param("trainerUsername", "InvalidTrainer")
                         .param("trainingName", "Yoga Session")

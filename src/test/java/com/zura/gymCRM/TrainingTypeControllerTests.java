@@ -32,7 +32,7 @@ public class TrainingTypeControllerTests {
     @Test
     @Order(1)
     void testGetTrainingTypes() throws Exception {
-        mockMvc.perform(get("/training-types")
+        mockMvc.perform(get("/trainingTypes")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].trainingTypeId").value("2"))
