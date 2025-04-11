@@ -6,6 +6,7 @@ import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
+import com.zura.gymCRM.security.PasswordUtil;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TrainerService {
+  @Autowired
+  private PasswordUtil passwordUtil;
   private TrainerRepository trainerRepository;
 
   @Autowired
@@ -33,21 +36,31 @@ public class TrainerService {
     String transactionId = MDC.get("transactionId");
 
     logger.info("Transaction ID: {} Attempting to create trainer: {} {}",
-                transactionId,
-                trainer.getUser().getFirstName(),
-                trainer.getUser().getLastName());
+            transactionId,
+            trainer.getUser().getFirstName(),
+            trainer.getUser().getLastName());
 
     List<Trainer> userlist = trainerRepository.findAll();
     trainer.getUser().setUsername(UsernameGenerator.generateUsername(
-        trainer.getUser().getFirstName(), trainer.getUser().getLastName(),
-        userlist));
-    trainer.getUser().setPassword(generateRandomPassword());
-    trainerRepository.save(trainer);
-    logger.info("Transaction ID: {} Trainer created successfully: {}",
-                transactionId,
-                trainer.getUser().getUsername());
+            trainer.getUser().getFirstName(), trainer.getUser().getLastName(),
+            userlist));
 
-    return trainer;
+    // Generate a random password
+    String rawPassword = generateRandomPassword();
+
+    // Store the encoded password in the database
+    trainer.getUser().setPassword(passwordUtil.encodePassword(rawPassword));
+
+    Trainer savedTrainer = trainerRepository.save(trainer);
+
+    // Set the raw password for the response (not stored in DB)
+    savedTrainer.getUser().setPassword(rawPassword);
+
+    logger.info("Transaction ID: {} Trainer created successfully: {}",
+            transactionId,
+            trainer.getUser().getUsername());
+
+    return savedTrainer;
   }
 
   public Optional<Trainer> getTrainer(Long userId) {
@@ -78,7 +91,7 @@ public class TrainerService {
 
   @Transactional
   public void changePassword(String username, String newPassword)
-      throws EntityNotFoundException {
+          throws EntityNotFoundException {
     String transactionId = MDC.get("transactionId");
     logger.info("Transaction ID: {} Attempting to change password for username: {}", transactionId, username);
 
@@ -88,13 +101,13 @@ public class TrainerService {
       Trainer trainer = trainerOpt.get();
       logger.info("Transaction ID: {} Trainer found: {}. Changing password.", transactionId, trainer.getUser().getUsername());
 
-      trainer.getUser().setPassword(newPassword);
+      trainer.getUser().setPassword(passwordUtil.encodePassword(newPassword));
       trainerRepository.save(trainer);
 
       logger.info("Transaction ID: {} Password successfully changed for trainer: {}", transactionId, trainer.getUser().getUsername());
     } else {
       logger.warn("Transaction ID: {} Trainer not found with username: {}", transactionId, username);
-      throw new EntityNotFoundException("Trainee not found");
+      throw new EntityNotFoundException("Trainer not found");
     }
   }
 
