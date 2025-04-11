@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,6 +26,7 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final LoginAttemptService loginAttemptService;
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     public AuthController(AuthenticationService authenticationService, LoginAttemptService loginAttemptService) {
         this.authenticationService = authenticationService;
@@ -37,7 +40,10 @@ public class AuthController {
             HttpServletRequest httpRequest) {
         String clientIp = getClientIP(httpRequest);
 
+        logger.info("Login attempt for user: {} from IP: {}", request.getUsername(), clientIp);
+
         if (loginAttemptService.isBlocked(clientIp)) {
+            logger.warn("IP is blocked due to too many failed attempts: {}", clientIp);
             return ResponseEntity.status(429)
                     .body(new AuthenticationResponse(null, "Account locked due to too many failed attempts. Try again in 5 minutes."));
         }
@@ -45,9 +51,11 @@ public class AuthController {
         try {
             AuthenticationResponse response = authenticationService.authenticate(request);
             loginAttemptService.loginSucceeded(clientIp);
+            logger.info("Login successful for user: {}", request.getUsername());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             loginAttemptService.loginFailed(clientIp);
+            logger.warn("Login failed for user: {} - {}", request.getUsername(), e.getMessage());
             return ResponseEntity.status(401)
                     .body(new AuthenticationResponse(null, "Authentication failed: " + e.getMessage()));
         }
@@ -60,7 +68,6 @@ public class AuthController {
         }
         return xfHeader.split(",")[0];
     }
-
 
     @PostMapping("/logout")
     @Operation(summary = "User Logout", description = "Invalidate the user's session")
@@ -77,5 +84,4 @@ public class AuthController {
         // Return success message
         return ResponseEntity.ok(Map.of("message", "Successfully logged out"));
     }
-
 }

@@ -47,14 +47,19 @@ public class TrainerService {
 
     // Generate a random password
     String rawPassword = generateRandomPassword();
+    logger.debug("Generated raw password: {}", rawPassword);
 
     // Store the encoded password in the database
-    trainer.getUser().setPassword(passwordUtil.encodePassword(rawPassword));
+    String encodedPassword = passwordUtil.encodePassword(rawPassword);
+    logger.debug("Password encoded successfully");
+    trainer.getUser().setPassword(encodedPassword);
 
     Trainer savedTrainer = trainerRepository.save(trainer);
+    logger.debug("Trainer saved to database with encoded password");
 
     // Set the raw password for the response (not stored in DB)
     savedTrainer.getUser().setPassword(rawPassword);
+    logger.debug("Raw password set in response object");
 
     logger.info("Transaction ID: {} Trainer created successfully: {}",
             transactionId,
@@ -101,7 +106,9 @@ public class TrainerService {
       Trainer trainer = trainerOpt.get();
       logger.info("Transaction ID: {} Trainer found: {}. Changing password.", transactionId, trainer.getUser().getUsername());
 
-      trainer.getUser().setPassword(passwordUtil.encodePassword(newPassword));
+      // Encode the new password before storing
+      String encodedPassword = passwordUtil.encodePassword(newPassword);
+      trainer.getUser().setPassword(encodedPassword);
       trainerRepository.save(trainer);
 
       logger.info("Transaction ID: {} Password successfully changed for trainer: {}", transactionId, trainer.getUser().getUsername());

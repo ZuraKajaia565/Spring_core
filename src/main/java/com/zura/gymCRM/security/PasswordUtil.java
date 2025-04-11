@@ -1,5 +1,7 @@
 package com.zura.gymCRM.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -8,16 +10,27 @@ import org.springframework.stereotype.Component;
 public class PasswordUtil {
 
     private final PasswordEncoder passwordEncoder;
+    private static final Logger logger = LoggerFactory.getLogger(PasswordUtil.class);
 
     public PasswordUtil() {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
     public String encodePassword(String rawPassword) {
-        return passwordEncoder.encode(rawPassword);
+        logger.debug("Encoding password");
+        String encoded = passwordEncoder.encode(rawPassword);
+        logger.debug("Password encoded successfully");
+        return encoded;
     }
 
     public boolean matches(String rawPassword, String encodedPassword) {
+        logger.debug("Checking if passwords match");
+        // Check if the encodedPassword looks like BCrypt format
+        if (!encodedPassword.startsWith("$2a$") && !encodedPassword.startsWith("$2b$") && !encodedPassword.startsWith("$2y$")) {
+            logger.warn("Encoded password does not look like BCrypt format");
+            return rawPassword.equals(encodedPassword); // Temporary fallback for plain text passwords
+        }
+
         return passwordEncoder.matches(rawPassword, encodedPassword);
     }
 }

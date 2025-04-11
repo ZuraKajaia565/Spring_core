@@ -54,14 +54,19 @@ public class TraineeService {
 
       // Generate a random password
       String rawPassword = generateRandomPassword();
+      logger.debug("Generated raw password: {}", rawPassword);
 
       // Store the encoded password in the database
-      trainee.getUser().setPassword(passwordUtil.encodePassword(rawPassword));
+      String encodedPassword = passwordUtil.encodePassword(rawPassword);
+      logger.debug("Password encoded successfully");
+      trainee.getUser().setPassword(encodedPassword);
 
       Trainee savedTrainee = traineeRepository.save(trainee);
+      logger.debug("Trainee saved to database with encoded password");
 
       // Set the raw password for the response (not stored in DB)
       savedTrainee.getUser().setPassword(rawPassword);
+      logger.debug("Raw password set in response object");
 
       logger.info("Transaction ID: {} - Trainee created successfully: {}",
               transactionId, trainee.getUser().getUsername());
@@ -96,7 +101,9 @@ public class TraineeService {
             traineeRepository.findByUser_Username(username);
     if (traineeOpt.isPresent()) {
       Trainee trainee = traineeOpt.get();
-      trainee.getUser().setPassword(passwordUtil.encodePassword(newPassword));
+      // Encode the new password before storing
+      String encodedPassword = passwordUtil.encodePassword(newPassword);
+      trainee.getUser().setPassword(encodedPassword);
       traineeRepository.save(trainee);
       logger.info("Transaction ID: {} - Password changed for trainee: {}", transactionId, username);
     } else {

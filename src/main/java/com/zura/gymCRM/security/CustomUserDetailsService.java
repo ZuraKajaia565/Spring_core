@@ -6,6 +6,8 @@ import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.User;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,7 +24,7 @@ import java.util.Optional;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
-
+    private static final Logger logger = LoggerFactory.getLogger(CustomUserDetailsService.class);
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
     private final LoginAttemptService loginAttemptService;
@@ -51,6 +53,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         Optional<Trainer> trainer = trainerRepository.findByUser_Username(username);
+
+        logger.info("Loading user: {}, found: {}", username, trainee.isPresent() || trainer.isPresent());
         if (trainer.isPresent() && trainer.get().getUser().getIsActive()) {
             User user = trainer.get().getUser();
             return createUserDetails(user, "TRAINER");

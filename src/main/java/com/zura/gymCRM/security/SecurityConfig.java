@@ -44,8 +44,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/trainees", "/api/trainers", "/api/login").permitAll()
+                        // Public endpoints
+                        .requestMatchers("/api/trainees").permitAll()
+                        .requestMatchers("/api/trainers").permitAll()
+                        .requestMatchers("/api/login").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        // Swagger UI and API docs
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
