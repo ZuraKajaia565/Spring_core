@@ -9,6 +9,7 @@ import com.zura.gymCRM.facade.GymFacade;
 import com.zura.gymCRM.security.AuthenticationService;
 import com.zura.gymCRM.security.LoginAttemptService;
 import com.zura.gymCRM.security.PasswordUtil;
+import com.zura.gymCRM.security.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,16 +38,20 @@ public class LoginController {
 
   private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
+  private final TokenBlacklistService tokenBlacklistService;
+
   @Autowired
   public LoginController(
           AuthenticationService authenticationService,
           LoginAttemptService loginAttemptService,
           GymFacade gymFacade,
-          PasswordUtil passwordUtil) {
+          PasswordUtil passwordUtil,
+          TokenBlacklistService tokenBlacklistService) {
     this.authenticationService = authenticationService;
     this.loginAttemptService = loginAttemptService;
     this.gymFacade = gymFacade;
     this.passwordUtil = passwordUtil;
+    this.tokenBlacklistService = tokenBlacklistService;
   }
 
   @PostMapping("/login")
@@ -118,6 +123,13 @@ public class LoginController {
   @Operation(summary = "User Logout", description = "Invalidate the user's session and JWT token")
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
+    // Get the JWT token from the Authorization header
+    String authHeader = request.getHeader("Authorization");
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7);
+      tokenBlacklistService.blacklistToken(token);
+    }
+
     // Invalidate session if it exists
     if (request.getSession(false) != null) {
       request.getSession().invalidate();
