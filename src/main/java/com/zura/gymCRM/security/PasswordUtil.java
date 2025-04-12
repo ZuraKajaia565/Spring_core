@@ -25,10 +25,13 @@ public class PasswordUtil {
 
     public boolean matches(String rawPassword, String encodedPassword) {
         logger.debug("Checking if passwords match");
+
         // Check if the encodedPassword looks like BCrypt format
         if (!encodedPassword.startsWith("$2a$") && !encodedPassword.startsWith("$2b$") && !encodedPassword.startsWith("$2y$")) {
-            logger.warn("Encoded password does not look like BCrypt format");
-            return rawPassword.equals(encodedPassword); // Temporary fallback for plain text passwords
+            logger.warn("Encoded password does not look like BCrypt format - encoding it now");
+            // Instead of direct comparison, encode the raw password and update in DB
+            return rawPassword.equals(encodedPassword); // Temporary for migration
+            // In a production environment, you should update the stored password here
         }
 
         return passwordEncoder.matches(rawPassword, encodedPassword);

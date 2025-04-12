@@ -29,6 +29,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final PasswordUtil passwordUtil;
 
     @Autowired
     private TraineeRepository traineeRepository;
@@ -41,10 +42,12 @@ public class AuthenticationService {
     public AuthenticationService(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
-            UserDetailsService userDetailsService) {
+            UserDetailsService userDetailsService,
+            PasswordUtil passwordUtil) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.passwordUtil = passwordUtil;
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -57,9 +60,9 @@ public class AuthenticationService {
             if (traineeOpt.isPresent()) {
                 Trainee trainee = traineeOpt.get();
 
-                // Direct password comparison for now (temporary solution)
-                if (request.getPassword().equals(trainee.getUser().getPassword())) {
-                    logger.info("Direct password match successful for trainee: {}", request.getUsername());
+                // Use passwordUtil to check if the raw password matches the stored hash
+                if (passwordUtil.matches(request.getPassword(), trainee.getUser().getPassword())) {
+                    logger.info("Password match successful for trainee: {}", request.getUsername());
 
                     // Create user details manually
                     UserDetails userDetails = createUserDetails(trainee.getUser(), "TRAINEE");
@@ -72,9 +75,9 @@ public class AuthenticationService {
             } else if (trainerOpt.isPresent()) {
                 Trainer trainer = trainerOpt.get();
 
-                // Direct password comparison for now (temporary solution)
-                if (request.getPassword().equals(trainer.getUser().getPassword())) {
-                    logger.info("Direct password match successful for trainer: {}", request.getUsername());
+                // Use passwordUtil to check if the raw password matches the stored hash
+                if (passwordUtil.matches(request.getPassword(), trainer.getUser().getPassword())) {
+                    logger.info("Password match successful for trainer: {}", request.getUsername());
 
                     // Create user details manually
                     UserDetails userDetails = createUserDetails(trainer.getUser(), "TRAINER");

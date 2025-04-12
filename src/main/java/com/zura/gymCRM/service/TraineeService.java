@@ -5,6 +5,7 @@ import com.zura.gymCRM.dao.TrainerRepository;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
+import com.zura.gymCRM.entities.User;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.security.PasswordUtil;
 import jakarta.persistence.EntityNotFoundException;
@@ -64,13 +65,24 @@ public class TraineeService {
       Trainee savedTrainee = traineeRepository.save(trainee);
       logger.debug("Trainee saved to database with encoded password");
 
-      // Set the raw password for the response (not stored in DB)
-      savedTrainee.getUser().setPassword(rawPassword);
-      logger.debug("Raw password set in response object");
+      Trainee responseTrainee = new Trainee();
+      User responseUser = new User();
+
+      // Copy relevant properties
+      responseUser.setUsername(savedTrainee.getUser().getUsername());
+      responseUser.setFirstName(savedTrainee.getUser().getFirstName());
+      responseUser.setLastName(savedTrainee.getUser().getLastName());
+      responseUser.setPassword(rawPassword); // Use raw password for response
+      responseUser.setIsActive(savedTrainee.getUser().getIsActive());
+
+      responseTrainee.setUser(responseUser);
+      responseTrainee.setId(savedTrainee.getId());
+      responseTrainee.setDateOfBirth(savedTrainee.getDateOfBirth());
+      responseTrainee.setAddress(savedTrainee.getAddress());
 
       logger.info("Transaction ID: {} - Trainee created successfully: {}",
               transactionId, trainee.getUser().getUsername());
-      return savedTrainee;
+      return responseTrainee;
     } catch (Exception e) {
       logger.error("Transaction ID: {} - Error creating trainee: {}", transactionId, e.getMessage(), e);
       throw e;

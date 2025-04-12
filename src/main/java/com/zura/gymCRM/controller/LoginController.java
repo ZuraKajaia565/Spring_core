@@ -10,6 +10,7 @@ import com.zura.gymCRM.security.AuthenticationService;
 import com.zura.gymCRM.security.LoginAttemptService;
 import com.zura.gymCRM.security.PasswordUtil;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -122,8 +123,19 @@ public class LoginController {
       request.getSession().invalidate();
     }
 
-    // Perform logout
+    // Clear security context
     SecurityContextHolder.clearContext();
+
+    // Clear any cookies that might be related to authentication
+    Cookie[] cookies = request.getCookies();
+    if (cookies != null) {
+      for (Cookie cookie : cookies) {
+        Cookie newCookie = new Cookie(cookie.getName(), null);
+        newCookie.setMaxAge(0);
+        newCookie.setPath("/");
+        response.addCookie(newCookie);
+      }
+    }
 
     // Return success message
     return ResponseEntity.ok(Map.of("message", "Successfully logged out"));

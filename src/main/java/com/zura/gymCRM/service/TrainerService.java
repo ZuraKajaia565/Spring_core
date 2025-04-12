@@ -4,6 +4,7 @@ import com.zura.gymCRM.dao.TrainerRepository;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
+import com.zura.gymCRM.entities.User;
 import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.security.PasswordUtil;
@@ -57,15 +58,26 @@ public class TrainerService {
     Trainer savedTrainer = trainerRepository.save(trainer);
     logger.debug("Trainer saved to database with encoded password");
 
-    // Set the raw password for the response (not stored in DB)
-    savedTrainer.getUser().setPassword(rawPassword);
-    logger.debug("Raw password set in response object");
+    // Create a detached copy for the response with raw password
+    Trainer responseTrainer = new Trainer();
+    User responseUser = new User();
+
+    // Copy relevant properties
+    responseUser.setUsername(savedTrainer.getUser().getUsername());
+    responseUser.setFirstName(savedTrainer.getUser().getFirstName());
+    responseUser.setLastName(savedTrainer.getUser().getLastName());
+    responseUser.setPassword(rawPassword); // Use raw password for response
+    responseUser.setIsActive(savedTrainer.getUser().getIsActive());
+
+    responseTrainer.setUser(responseUser);
+    responseTrainer.setId(savedTrainer.getId());
+    responseTrainer.setSpecialization(savedTrainer.getSpecialization());
 
     logger.info("Transaction ID: {} Trainer created successfully: {}",
             transactionId,
             trainer.getUser().getUsername());
 
-    return savedTrainer;
+    return responseTrainer;
   }
 
   public Optional<Trainer> getTrainer(Long userId) {
