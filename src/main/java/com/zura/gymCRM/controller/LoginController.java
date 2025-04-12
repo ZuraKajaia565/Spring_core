@@ -9,77 +9,134 @@ import com.zura.gymCRM.facade.GymFacade;
 import com.zura.gymCRM.security.AuthenticationService;
 import com.zura.gymCRM.security.LoginAttemptService;
 import com.zura.gymCRM.security.PasswordUtil;
-import com.zura.gymCRM.service.TraineeService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
 public class LoginController {
 
-  @Autowired
-  GymFacade gymFacade;
+  private final AuthenticationService authenticationService;
+  private final LoginAttemptService loginAttemptService;
+  private final GymFacade gymFacade;
+  private final PasswordUtil passwordUtil;
+
+  private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
   @Autowired
-  private AuthenticationService authenticationService;
+  public LoginController(
+          AuthenticationService authenticationService,
+          LoginAttemptService loginAttemptService,
+          GymFacade gymFacade,
+          PasswordUtil passwordUtil) {
+    this.authenticationService = authenticationService;
+    this.loginAttemptService = loginAttemptService;
+    this.gymFacade = gymFacade;
+    this.passwordUtil = passwordUtil;
+  }
 
-  @Autowired
-  private LoginAttemptService loginAttemptService;
-
-  @Autowired
-  private PasswordUtil passwordUtil;
-  private static final Logger logger =
-          LoggerFactory.getLogger(LoginController.class);
-
-  // In LoginController.java, modify the login method
-  @Operation(summary="Login", method = "Login", description = "Login")
-  @GetMapping("/login")
+  @PostMapping("/login")
+  @Operation(summary = "User Login", description = "Authenticate a user with username and password in JSON body")
   public ResponseEntity<AuthenticationResponse> login(
-          @RequestParam String username,
-          @RequestParam String password,
-          HttpServletRequest request) {
+          @RequestBody @Valid AuthenticationRequest request,
+          HttpServletRequest httpRequest) {
+    String clientIp = getClientIP(httpRequest);
 
-    String clientIp = getClientIP(request);
+    logger.info("Login attempt for user: {} from IP: {}", request.getUsername(), clientIp);
 
-    // Check if the IP is blocked due to too many failed attempts
     if (loginAttemptService.isBlocked(clientIp)) {
+      logger.warn("IP is blocked due to too many failed attempts: {}", clientIp);
       return ResponseEntity.status(429)
               .body(new AuthenticationResponse(null, "Account locked due to too many failed attempts. Try again in 5 minutes."));
     }
 
     try {
-      // Use our authentication service to handle login
-      AuthenticationRequest authRequest = new AuthenticationRequest(username, password);
-      AuthenticationResponse response = authenticationService.authenticate(authRequest);
+      // Authenticate and get token
+      AuthenticationResponse response = authenticationService.authenticate(request);
 
-      // If authentication successful, record success and return token
+      // Log success and return the response with token
       loginAttemptService.loginSucceeded(clientIp);
-      return ResponseEntity.ok(response);
+      logger.info("Login successful for user: {}, token generated", request.getUsername());
 
+      // Return the response which contains the token
+      return ResponseEntity.ok(response);
     } catch (Exception e) {
-      // If authentication fails, record failure and return error
       loginAttemptService.loginFailed(clientIp);
+      logger.warn("Login failed for user: {} - {}", request.getUsername(), e.getMessage());
       return ResponseEntity.status(401)
-              .body(new AuthenticationResponse(null, "Invalid username or password."));
+              .body(new AuthenticationResponse(null, "Authentication failed: " + e.getMessage()));
     }
   }
 
-  @Operation(summary = "change password", method = "Change Login", description = "Change Login credentials")
+  @GetMapping("/login")
+  @Operation(summary = "User Login with URL Parameters", description = "Authenticate a user with username and password as URL parameters")
+  public ResponseEntity<AuthenticationResponse> loginWithParams(
+          @RequestParam String username,
+          @RequestParam String password,
+          HttpServletRequest request) {
+
+    String clientIp = getClientIP(request);
+    logger.info("Login attempt for user: {} from IP: {}", username, clientIp);
+
+    if (loginAttemptService.isBlocked(clientIp)) {
+      logger.warn("IP is blocked due to too many failed attempts: {}", clientIp);
+      return ResponseEntity.status(429)
+              .body(new AuthenticationResponse(null, "Account locked due to too many failed attempts. Try again in 5 minutes."));
+    }
+
+    try {
+      // Create authentication request and authenticate
+      AuthenticationRequest authRequest = new AuthenticationRequest(username, password);
+      AuthenticationResponse response = authenticationService.authenticate(authRequest);
+
+      loginAttemptService.loginSucceeded(clientIp);
+      logger.info("Login successful for user: {}", username);
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      loginAttemptService.loginFailed(clientIp);
+      logger.warn("Login failed for user: {} - {}", username, e.getMessage());
+      return ResponseEntity.status(401)
+              .body(new AuthenticationResponse(null, "Authentication failed: " + e.getMessage()));
+    }
+  }
+
+  @PostMapping("/logout")
+  @Operation(summary = "User Logout", description = "Invalidate the user's session and JWT token")
   @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
+    // Invalidate session if it exists
+    if (request.getSession(false) != null) {
+      request.getSession().invalidate();
+    }
+
+    // Perform logout
+    SecurityContextHolder.clearContext();
+
+    // Return success message
+    return ResponseEntity.ok(Map.of("message", "Successfully logged out"));
+  }
+
   @PutMapping("/{username}/password")
-  public ResponseEntity<LoginResponse>
-  changePassword(@PathVariable String username,
-                 @RequestParam String oldPassword,
-                 @RequestParam String newPassword,
-                 HttpServletRequest request) {
+  @Operation(summary = "Change Password", description = "Change user password with proper authorization")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<LoginResponse> changePassword(
+          @PathVariable String username,
+          @RequestParam String oldPassword,
+          @RequestParam String newPassword,
+          HttpServletRequest request) {
 
     String clientIp = getClientIP(request);
     logger.debug("Password change request for user: {} from IP: {}", username, clientIp);
@@ -89,6 +146,14 @@ public class LoginController {
       logger.warn("IP blocked for too many failed attempts: {}", clientIp);
       return ResponseEntity.status(429).body(
               new LoginResponse("Unknown", "Account locked due to too many failed attempts. Try again in 5 minutes."));
+    }
+
+    // Get the authenticated user
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (!authentication.getName().equals(username)) {
+      logger.warn("User {} attempted to change password for {}", authentication.getName(), username);
+      return ResponseEntity.status(403).body(
+              new LoginResponse("Unknown", "You can only change your own password"));
     }
 
     Optional<Trainee> trainee = gymFacade.selectTraineeByusername(username);
@@ -112,7 +177,6 @@ public class LoginController {
                 new LoginResponse("Unknown", "Old password is incorrect."));
       }
     }
-
     else if (trainer.isPresent()) {
       // Use password util to check if the raw oldPassword matches the stored hash
       boolean passwordMatches = passwordUtil.matches(oldPassword, trainer.get().getUser().getPassword());
@@ -131,7 +195,6 @@ public class LoginController {
                 new LoginResponse("Unknown", "Old password is incorrect."));
       }
     }
-
     else {
       logger.warn("User not found: {}", username);
       return ResponseEntity.status(404).body(

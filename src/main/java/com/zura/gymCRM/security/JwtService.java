@@ -4,20 +4,27 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
 
-    // This should ideally be configured in application.properties
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
+
     @Value("${jwt.secret:fallbackSecretKeyThatIsAtLeast32CharactersLong}")
     private String secretKey;
 
@@ -38,13 +45,36 @@ public class JwtService {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        // Current timestamp for issuedAt
+        Date now = new Date();
+
+        // Add unique elements to the token
+        String authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
+
+        extraClaims.put("roles", authorities);
+        extraClaims.put("tokenId", generateUniqueTokenId()); // Adds a unique ID to each token
+
+        logger.debug("Generating JWT token for user: {}", userDetails.getUsername());
+
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + jwtExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    /**
+     * Generates a unique identifier for each token to ensure no two tokens are identical
+     */
+    private String generateUniqueTokenId() {
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] randomBytes = new byte[16]; // 128 bits
+        secureRandom.nextBytes(randomBytes);
+        return Base64.getEncoder().encodeToString(randomBytes);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

@@ -51,7 +51,6 @@ public class AuthenticationService {
         logger.info("Attempting to authenticate: {}", request.getUsername());
 
         try {
-            // First, let's check if the user exists and get their details
             Optional<Trainee> traineeOpt = traineeRepository.findByUser_Username(request.getUsername());
             Optional<Trainer> trainerOpt = trainerRepository.findByUser_Username(request.getUsername());
 
