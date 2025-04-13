@@ -49,19 +49,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**", "/metrics/**").permitAll()
+                        // Require authentication for all other requests
                         .anyRequest().authenticated()
                 )
+                // Use stateless session management (important for JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider())
+                // Add our JWT filter BEFORE UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .logout(logout -> logout
-                        .logoutUrl("/api/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            response.setStatus(200);
-                        })
-                        .invalidateHttpSession(true)
-                        .clearAuthentication(true)
-                );
+                .authenticationProvider(authenticationProvider());1
 
         return http.build();
     }

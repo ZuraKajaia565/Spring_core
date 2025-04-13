@@ -50,6 +50,8 @@ public class AuthenticationService {
         this.passwordUtil = passwordUtil;
     }
 
+// Improve the authenticate method in AuthenticationService
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         logger.info("Attempting to authenticate: {}", request.getUsername());
 
@@ -59,6 +61,12 @@ public class AuthenticationService {
 
             if (traineeOpt.isPresent()) {
                 Trainee trainee = traineeOpt.get();
+
+                // Check if account is active
+                if (!trainee.getUser().getIsActive()) {
+                    logger.warn("Authentication failed for trainee: {} - Account is deactivated", request.getUsername());
+                    throw new BadCredentialsException("Account is deactivated");
+                }
 
                 // Use passwordUtil to check if the raw password matches the stored hash
                 if (passwordUtil.matches(request.getPassword(), trainee.getUser().getPassword())) {
@@ -74,6 +82,12 @@ public class AuthenticationService {
                 }
             } else if (trainerOpt.isPresent()) {
                 Trainer trainer = trainerOpt.get();
+
+                // Check if account is active
+                if (!trainer.getUser().getIsActive()) {
+                    logger.warn("Authentication failed for trainer: {} - Account is deactivated", request.getUsername());
+                    throw new BadCredentialsException("Account is deactivated");
+                }
 
                 // Use passwordUtil to check if the raw password matches the stored hash
                 if (passwordUtil.matches(request.getPassword(), trainer.getUser().getPassword())) {
@@ -92,10 +106,9 @@ public class AuthenticationService {
             // If we reach here, either user doesn't exist or password doesn't match
             logger.warn("Authentication failed for user: {} - Invalid credentials", request.getUsername());
             throw new BadCredentialsException("Invalid username or password");
-
         } catch (BadCredentialsException e) {
-            logger.warn("Authentication failed for user: {} - Bad credentials", request.getUsername());
-            throw new BadCredentialsException("Invalid username or password");
+            logger.warn("Authentication failed for user: {} - {}", request.getUsername(), e.getMessage());
+            throw new BadCredentialsException(e.getMessage());
         } catch (Exception e) {
             logger.error("Authentication error for user: {}", request.getUsername(), e);
             throw new RuntimeException("Authentication error: " + e.getMessage(), e);

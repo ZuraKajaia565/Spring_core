@@ -6,10 +6,7 @@ import com.zura.gymCRM.dto.LoginResponse;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.facade.GymFacade;
-import com.zura.gymCRM.security.AuthenticationService;
-import com.zura.gymCRM.security.LoginAttemptService;
-import com.zura.gymCRM.security.PasswordUtil;
-import com.zura.gymCRM.security.TokenBlacklistService;
+import com.zura.gymCRM.security.*;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +28,8 @@ import java.util.Optional;
 @RequestMapping("/api")
 public class LoginController {
 
+  @Autowired
+  JwtService jwtService;
   private final AuthenticationService authenticationService;
   private final LoginAttemptService loginAttemptService;
   private final GymFacade gymFacade;
@@ -124,33 +123,52 @@ public class LoginController {
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Map<String, String>> logout(HttpServletRequest request, HttpServletResponse response) {
     // Get the JWT token from the Authorization header
+
+    logger.info("zura");
     String authHeader = request.getHeader("Authorization");
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+    if (authHeader != null) {
       String token = authHeader.substring(7);
+      logger.info("Processing logout request for token: {}...", token.substring(0, Math.min(10, token.length())));
+
+      // Blacklist the JWT token2
       tokenBlacklistService.blacklistToken(token);
+      logger.info("Token blacklisted successfully. Blacklist size: {}", tokenBlacklistService.getBlacklistSize());
+    } else {
+      logger.warn("Logout request without valid Authorization header");
     }
 
-    // Invalidate session if it exists
+    // Invalidate HTTP session
     if (request.getSession(false) != null) {
       request.getSession().invalidate();
+      logger.debug("HTTP session invalidated");
     }
 
-    // Clear security context
+    // Clear Spring Security context
     SecurityContextHolder.clearContext();
+    logger.debug("Security context cleared");
 
-    // Clear any cookies that might be related to authentication
+    // Clear any auth cookies
     Cookie[] cookies = request.getCookies();
     if (cookies != null) {
       for (Cookie cookie : cookies) {
-        Cookie newCookie = new Cookie(cookie.getName(), null);
-        newCookie.setMaxAge(0);
-        newCookie.setPath("/");
-        response.addCookie(newCookie);
+        if ("JSESSIONID".equals(cookie.getName()) || "remember-me".equals(cookie.getName())) {
+          Cookie newCookie = new Cookie(cookie.getName(), null);
+          newCookie.setMaxAge(0);
+          newCookie.setPath("/");
+          response.addCookie(newCookie);
+          logger.debug("Cleared cookie: {}", cookie.getName());
+        }
       }
     }
 
-    // Return success message
-    return ResponseEntity.ok(Map.of("message", "Successfully logged out"));
+    Map<String, String> responseBody = Map.of(
+            "message", "Successfully logged out",
+            "status", "success",
+            "timestamp", String.valueOf(System.currentTimeMillis())
+    );
+
+    logger.info("Logout completed successfully");
+    return ResponseEntity.ok(responseBody);
   }
 
   @PutMapping("/{username}/password")

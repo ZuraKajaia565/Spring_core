@@ -6,9 +6,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+// Verify PasswordUtil implementation
+
 @Component
 public class PasswordUtil {
-
     private final PasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(PasswordUtil.class);
 
@@ -28,10 +29,9 @@ public class PasswordUtil {
 
         // Check if the encodedPassword looks like BCrypt format
         if (!encodedPassword.startsWith("$2a$") && !encodedPassword.startsWith("$2b$") && !encodedPassword.startsWith("$2y$")) {
-            logger.warn("Encoded password does not look like BCrypt format - encoding it now");
-            // Instead of direct comparison, encode the raw password and update in DB
-            return rawPassword.equals(encodedPassword); // Temporary for migration
-            // In a production environment, you should update the stored password here
+            logger.warn("Encoded password does not look like BCrypt format - trying direct comparison");
+            // For legacy passwords or during development/testing
+            return rawPassword.equals(encodedPassword);
         }
 
         return passwordEncoder.matches(rawPassword, encodedPassword);

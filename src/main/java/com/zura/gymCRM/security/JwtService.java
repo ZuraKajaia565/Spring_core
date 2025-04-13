@@ -90,6 +90,11 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public long getExpirationTimeFromToken(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.getExpiration().getTime() - System.currentTimeMillis();
+    }
+
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
