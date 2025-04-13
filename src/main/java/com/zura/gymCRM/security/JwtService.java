@@ -40,39 +40,34 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
+
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
-    }
+        Map<String, Object> extraClaims = new HashMap<>();
 
-    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        // Current timestamp for issuedAt
-        Date now = new Date();
-
-        // Add unique elements to the token
+        // Add user-specific information to make tokens unique
         String authorities = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
         extraClaims.put("roles", authorities);
-        extraClaims.put("tokenId", generateUniqueTokenId()); // Adds a unique ID to each token
+        extraClaims.put("tokenId", generateUniqueTokenId());
+        extraClaims.put("timestamp", System.currentTimeMillis()); // Add timestamp for uniqueness
 
-        logger.debug("Generating JWT token for user: {}", userDetails.getUsername());
+        // For additional uniqueness, you could add user-specific identifiers
+        // extraClaims.put("userFingerprint", generateUserFingerprint(userDetails));
 
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + jwtExpiration))
+                .setSubject(userDetails.getUsername()) // Include username in subject
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /**
-     * Generates a unique identifier for each token to ensure no two tokens are identical
-     */
     private String generateUniqueTokenId() {
         SecureRandom secureRandom = new SecureRandom();
-        byte[] randomBytes = new byte[16]; // 128 bits
+        byte[] randomBytes = new byte[32]; // Use 32 bytes (256 bits) for more randomness
         secureRandom.nextBytes(randomBytes);
         return Base64.getEncoder().encodeToString(randomBytes);
     }
