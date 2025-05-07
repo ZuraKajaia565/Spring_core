@@ -24,8 +24,5 @@ public class GymCrmApplication {
     };
   }
 
-  @Bean
-  public RestTemplate restTemplate() {
-    return new RestTemplate();
-  }
+
 }
