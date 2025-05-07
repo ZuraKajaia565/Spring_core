@@ -89,5 +89,10 @@ public class LoginAttemptService {
             return timestamp;
         }
 
+        public void setTimestamp(LocalDateTime timestamp) {
+            this.timestamp = timestamp;
+        }
+
+
     }
 }
