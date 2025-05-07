@@ -156,8 +156,7 @@ public class GymFacade {
       traineeService.changePassword(username, newPassword);
     } else {
       logger.error("Transaction ID: {} - Invalid Credentials for Trainee {}", transactionId, username);
-      throw new NotFoundException("Trainee with this {} username is not found" +
-                                  username);
+      throw new NotFoundException("Trainee with username " + username + " is not found");
     }
   }
 
@@ -244,8 +243,7 @@ try {
       trainerService.changePassword(username, newPassword);
     } else {
       logger.error("Transaction ID: {} - Trainer not found: {}", transactionId, username);
-      throw new NotFoundException("Trainer with this {} username is not found" +
-                                  username);
+      throw new NotFoundException("Trainer with username " + username + " is not found");
     }
   }
 

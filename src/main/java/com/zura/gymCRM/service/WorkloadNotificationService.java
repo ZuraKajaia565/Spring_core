@@ -1,6 +1,7 @@
 package com.zura.gymCRM.service;
 
 import com.zura.gymCRM.dto.WorkloadUpdateDto;
+import com.zura.gymCRM.exceptions.WorkloadServiceException;
 import com.zura.gymCRM.security.JwtService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
@@ -65,7 +66,7 @@ public class WorkloadNotificationService {
             logger.info("Workload service notification successful with status: {}", response.getStatusCode());
         } catch (Exception e) {
             logger.error("Failed to notify workload service: {}", e.getMessage(), e);
-            throw e; // Re-throw to trigger circuit breaker
+            throw new WorkloadServiceException("Failed to notify workload service", e);
         }
     }
 

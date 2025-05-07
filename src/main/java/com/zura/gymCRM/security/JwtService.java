@@ -26,10 +26,11 @@ public class JwtService {
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${jwt.secret:fallbackSecretKeyThatIsAtLeast32CharactersLong}")
-    private String secretKey;
+    public String secretKey;
 
     @Value("${jwt.expiration:86400000}") // 24 hours in milliseconds
-    private long jwtExpiration;
+    public
+    long jwtExpiration;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
