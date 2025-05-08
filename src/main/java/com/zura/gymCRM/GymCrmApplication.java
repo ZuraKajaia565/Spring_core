@@ -1,6 +1,5 @@
 package com.zura.gymCRM;
 
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -10,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-
+@EnableFeignClients
 public class GymCrmApplication {
 
   public static void main(String[] args) {
@@ -18,11 +17,7 @@ public class GymCrmApplication {
   }
 
   @Bean
-  CommandLineRunner init() {
-    return args -> {
-      System.out.println("Application started with a CommandLineRunner bean.");
-    };
+  RestTemplate restTemplate() {
+    return new RestTemplate();
   }
-
-
 }

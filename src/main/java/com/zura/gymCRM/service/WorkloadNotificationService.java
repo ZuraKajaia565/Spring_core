@@ -1,78 +1,138 @@
 package com.zura.gymCRM.service;
 
-import com.zura.gymCRM.dto.WorkloadUpdateDto;
+import com.zura.gymCRM.client.WorkloadServiceClient;
+import com.zura.gymCRM.dto.WorkloadRequest;
+import com.zura.gymCRM.entities.Training;
+import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.exceptions.WorkloadServiceException;
-import com.zura.gymCRM.security.JwtService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.UUID;
+
+/**
+ * Service responsible for notifying the workload service about training changes
+ */
 @Service
 public class WorkloadNotificationService {
     private static final Logger logger = LoggerFactory.getLogger(WorkloadNotificationService.class);
 
-    @Value("${workload.service.url:http://localhost:8082/api/workload}")
-    private String workloadServiceUrl;
-
-    private final RestTemplate restTemplate;
-    private final JwtService jwtService;
+    private final WorkloadServiceClient workloadServiceClient;
 
     @Autowired
-    public WorkloadNotificationService(RestTemplate restTemplate, JwtService jwtService) {
-        this.restTemplate = restTemplate;
-        this.jwtService = jwtService;
+    public WorkloadNotificationService(WorkloadServiceClient workloadServiceClient) {
+        this.workloadServiceClient = workloadServiceClient;
     }
 
-    @CircuitBreaker(name = "workloadService", fallbackMethod = "notifyWorkloadChangeFallback")
-    public void notifyWorkloadChange(WorkloadUpdateDto request, UserDetails userDetails) {
+    /**
+     * Notifies the workload service about a new training
+     *
+     * @param training The training entity
+     */
+    public void notifyTrainingCreated(Training training) {
+        String transactionId = getOrCreateTransactionId();
+
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            logger.info("Notifying workload service about new training for trainer: {}",
+                    training.getTrainer().getUser().getUsername());
 
-            // Generate JWT token for service-to-service communication
-            if (userDetails != null) {
-                String token = jwtService.generateToken(userDetails);
-                headers.set("Authorization", "Bearer " + token);
-                logger.debug("Added JWT token to workload service request");
-            } else {
-                logger.warn("No user details provided for workload notification");
-            }
+            WorkloadRequest request = createWorkloadRequest(training);
 
-            // Add transaction ID for distributed tracing
-            String transactionId = MDC.get("transactionId");
-            if (transactionId != null && !transactionId.isEmpty()) {
-                headers.set("X-Transaction-ID", transactionId);
-                logger.debug("Added transaction ID to workload service request: {}", transactionId);
-            }
+            workloadServiceClient.createTrainerWorkload(
+                    training.getTrainer().getUser().getUsername(),
+                    request,
+                    transactionId);
 
-            HttpEntity<WorkloadUpdateDto> entity = new HttpEntity<>(request, headers);
-
-            logger.info("Sending notification to workload service for trainer: {}", request.getUsername());
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    workloadServiceUrl,
-                    entity,
-                    String.class);
-
-            logger.info("Workload service notification successful with status: {}", response.getStatusCode());
+            logger.info("Successfully notified workload service about new training");
         } catch (Exception e) {
-            logger.error("Failed to notify workload service: {}", e.getMessage(), e);
-            throw new WorkloadServiceException("Failed to notify workload service", e);
+            logger.error("Failed to notify workload service about new training: {}", e.getMessage(), e);
+            throw new WorkloadServiceException("Failed to notify workload service about new training", e);
         }
     }
 
-    // Fallback method for circuit breaker
-    public void notifyWorkloadChangeFallback(WorkloadUpdateDto request, UserDetails userDetails, Exception e) {
-        logger.warn("Circuit breaker triggered for workload service notification. Request will be retried later. Error: {}", e.getMessage());
-        // In a production system, you would queue the failed request for retry
+    /**
+     * Notifies the workload service about a training update
+     *
+     * @param training The training entity
+     */
+    public void notifyTrainingUpdated(Training training) {
+        String transactionId = getOrCreateTransactionId();
+
+        try {
+            logger.info("Notifying workload service about updated training for trainer: {}",
+                    training.getTrainer().getUser().getUsername());
+
+            WorkloadRequest request = createWorkloadRequest(training);
+
+            workloadServiceClient.updateTrainerWorkload(
+                    training.getTrainer().getUser().getUsername(),
+                    request,
+                    transactionId);
+
+            logger.info("Successfully notified workload service about updated training");
+        } catch (Exception e) {
+            logger.error("Failed to notify workload service about updated training: {}", e.getMessage(), e);
+            throw new WorkloadServiceException("Failed to notify workload service about updated training", e);
+        }
+    }
+
+    /**
+     * Notifies the workload service about a deleted training
+     *
+     * @param training The training entity
+     */
+    public void notifyTrainingDeleted(Training training) {
+        String transactionId = getOrCreateTransactionId();
+
+        try {
+            logger.info("Notifying workload service about deleted training for trainer: {}",
+                    training.getTrainer().getUser().getUsername());
+
+            LocalDate trainingDate = training.getTrainingDate().toInstant()
+                    .atZone(ZoneId.systemDefault()).toLocalDate();
+
+            workloadServiceClient.deleteTrainerWorkload(
+                    training.getTrainer().getUser().getUsername(),
+                    trainingDate.getYear(),
+                    trainingDate.getMonthValue(),
+                    transactionId);
+
+            logger.info("Successfully notified workload service about deleted training");
+        } catch (Exception e) {
+            logger.error("Failed to notify workload service about deleted training: {}", e.getMessage(), e);
+            throw new WorkloadServiceException("Failed to notify workload service about deleted training", e);
+        }
+    }
+
+    /**
+     * Creates a workload request from a training entity
+     */
+    private WorkloadRequest createWorkloadRequest(Training training) {
+        Trainer trainer = training.getTrainer();
+
+        return new WorkloadRequest(
+                trainer.getUser().getFirstName(),
+                trainer.getUser().getLastName(),
+                trainer.getUser().getIsActive(),
+                training.getTrainingDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
+                training.getTrainingDuration()
+        );
+    }
+
+    /**
+     * Gets the current transaction ID from MDC or creates a new one
+     */
+    private String getOrCreateTransactionId() {
+        String transactionId = MDC.get("transactionId");
+        if (transactionId == null || transactionId.isEmpty()) {
+            transactionId = UUID.randomUUID().toString();
+        }
+        return transactionId;
     }
 }
