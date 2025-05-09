@@ -2,7 +2,6 @@ package com.zura.gymCRM.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import java.time.LocalDate;
 
 /**
  * Request object for creating or updating trainer workload
@@ -17,9 +16,6 @@ public class WorkloadRequest {
 
     private boolean isActive;
 
-    @NotNull(message = "Training date is required")
-    private LocalDate trainingDate;
-
     @Positive(message = "Training duration must be positive")
     private int trainingDuration;
 
@@ -29,11 +25,10 @@ public class WorkloadRequest {
 
     // All-args constructor
     public WorkloadRequest(String firstName, String lastName, boolean isActive,
-                           LocalDate trainingDate, int trainingDuration) {
+                           int trainingDuration) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.isActive = isActive;
-        this.trainingDate = trainingDate;
         this.trainingDuration = trainingDuration;
     }
 
@@ -58,16 +53,8 @@ public class WorkloadRequest {
         return isActive;
     }
 
-    public void setActive(boolean isActive) {
-        this.isActive = isActive;
-    }
-
-    public LocalDate getTrainingDate() {
-        return trainingDate;
-    }
-
-    public void setTrainingDate(LocalDate trainingDate) {
-        this.trainingDate = trainingDate;
+    public void setActive(boolean active) {
+        isActive = active;
     }
 
     public int getTrainingDuration() {

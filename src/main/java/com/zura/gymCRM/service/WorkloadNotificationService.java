@@ -2,14 +2,14 @@ package com.zura.gymCRM.service;
 
 import com.zura.gymCRM.client.WorkloadServiceClient;
 import com.zura.gymCRM.dto.WorkloadRequest;
-import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.Trainer;
+import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.exceptions.WorkloadServiceException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,7 +17,7 @@ import java.time.ZoneId;
 import java.util.UUID;
 
 /**
- * Service responsible for notifying the workload service about training changes
+ * Service for notifying the workload service about training changes
  */
 @Service
 public class WorkloadNotificationService {
@@ -37,47 +37,91 @@ public class WorkloadNotificationService {
      */
     public void notifyTrainingCreated(Training training) {
         String transactionId = getOrCreateTransactionId();
+        Trainer trainer = training.getTrainer();
+
+        logger.debug("Notifying workload service about new training for trainer: {}",
+                trainer.getUser().getUsername());
 
         try {
-            logger.info("Notifying workload service about new training for trainer: {}",
-                    training.getTrainer().getUser().getUsername());
+            // Create workload request from training
+            WorkloadRequest request = new WorkloadRequest(
+                    trainer.getUser().getFirstName(),
+                    trainer.getUser().getLastName(),
+                    trainer.getUser().getIsActive(),
+                    training.getTrainingDuration()
+            );
 
-            WorkloadRequest request = createWorkloadRequest(training);
+            // Get year and month from training date
+            LocalDate trainingDate = training.getTrainingDate().toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
 
-            workloadServiceClient.createTrainerWorkload(
-                    training.getTrainer().getUser().getUsername(),
+            // Update the workload in the workload service
+            ResponseEntity<Void> response = workloadServiceClient.updateWorkload(
+                    trainer.getUser().getUsername(),
+                    trainingDate.getYear(),
+                    trainingDate.getMonthValue(),
                     request,
-                    transactionId);
+                    transactionId
+            );
 
-            logger.info("Successfully notified workload service about new training");
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new WorkloadServiceException("Failed to notify workload service: "
+                        + response.getStatusCode());
+            }
+
+            logger.debug("Successfully notified workload service about new training");
         } catch (Exception e) {
-            logger.error("Failed to notify workload service about new training: {}", e.getMessage(), e);
+            logger.error("Failed to notify workload service about new training: {}",
+                    e.getMessage(), e);
             throw new WorkloadServiceException("Failed to notify workload service about new training", e);
         }
     }
 
     /**
-     * Notifies the workload service about a training update
+     * Notifies the workload service about an updated training
      *
-     * @param training The training entity
+     * @param training The updated training entity
      */
     public void notifyTrainingUpdated(Training training) {
         String transactionId = getOrCreateTransactionId();
+        Trainer trainer = training.getTrainer();
+
+        logger.debug("Notifying workload service about updated training for trainer: {}",
+                trainer.getUser().getUsername());
 
         try {
-            logger.info("Notifying workload service about updated training for trainer: {}",
-                    training.getTrainer().getUser().getUsername());
+            // Create workload request from training
+            WorkloadRequest request = new WorkloadRequest(
+                    trainer.getUser().getFirstName(),
+                    trainer.getUser().getLastName(),
+                    trainer.getUser().getIsActive(),
+                    training.getTrainingDuration()
+            );
 
-            WorkloadRequest request = createWorkloadRequest(training);
+            // Get year and month from training date
+            LocalDate trainingDate = training.getTrainingDate().toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
 
-            workloadServiceClient.updateTrainerWorkload(
-                    training.getTrainer().getUser().getUsername(),
+            // Update the workload in the workload service
+            ResponseEntity<Void> response = workloadServiceClient.updateWorkload(
+                    trainer.getUser().getUsername(),
+                    trainingDate.getYear(),
+                    trainingDate.getMonthValue(),
                     request,
-                    transactionId);
+                    transactionId
+            );
 
-            logger.info("Successfully notified workload service about updated training");
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new WorkloadServiceException("Failed to notify workload service: "
+                        + response.getStatusCode());
+            }
+
+            logger.debug("Successfully notified workload service about updated training");
         } catch (Exception e) {
-            logger.error("Failed to notify workload service about updated training: {}", e.getMessage(), e);
+            logger.error("Failed to notify workload service about updated training: {}",
+                    e.getMessage(), e);
             throw new WorkloadServiceException("Failed to notify workload service about updated training", e);
         }
     }
@@ -85,44 +129,40 @@ public class WorkloadNotificationService {
     /**
      * Notifies the workload service about a deleted training
      *
-     * @param training The training entity
+     * @param training The training entity that was deleted
      */
     public void notifyTrainingDeleted(Training training) {
         String transactionId = getOrCreateTransactionId();
-
-        try {
-            logger.info("Notifying workload service about deleted training for trainer: {}",
-                    training.getTrainer().getUser().getUsername());
-
-            LocalDate trainingDate = training.getTrainingDate().toInstant()
-                    .atZone(ZoneId.systemDefault()).toLocalDate();
-
-            workloadServiceClient.deleteTrainerWorkload(
-                    training.getTrainer().getUser().getUsername(),
-                    trainingDate.getYear(),
-                    trainingDate.getMonthValue(),
-                    transactionId);
-
-            logger.info("Successfully notified workload service about deleted training");
-        } catch (Exception e) {
-            logger.error("Failed to notify workload service about deleted training: {}", e.getMessage(), e);
-            throw new WorkloadServiceException("Failed to notify workload service about deleted training", e);
-        }
-    }
-
-    /**
-     * Creates a workload request from a training entity
-     */
-    private WorkloadRequest createWorkloadRequest(Training training) {
         Trainer trainer = training.getTrainer();
 
-        return new WorkloadRequest(
-                trainer.getUser().getFirstName(),
-                trainer.getUser().getLastName(),
-                trainer.getUser().getIsActive(),
-                training.getTrainingDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
-                training.getTrainingDuration()
-        );
+        logger.debug("Notifying workload service about deleted training for trainer: {}",
+                trainer.getUser().getUsername());
+
+        try {
+            // Get year and month from training date
+            LocalDate trainingDate = training.getTrainingDate().toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
+            // Delete the workload in the workload service
+            ResponseEntity<Void> response = workloadServiceClient.deleteWorkload(
+                    trainer.getUser().getUsername(),
+                    trainingDate.getYear(),
+                    trainingDate.getMonthValue(),
+                    transactionId
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new WorkloadServiceException("Failed to notify workload service: "
+                        + response.getStatusCode());
+            }
+
+            logger.debug("Successfully notified workload service about deleted training");
+        } catch (Exception e) {
+            logger.error("Failed to notify workload service about deleted training: {}",
+                    e.getMessage(), e);
+            throw new WorkloadServiceException("Failed to notify workload service about deleted training", e);
+        }
     }
 
     /**
