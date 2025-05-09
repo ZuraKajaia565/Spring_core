@@ -16,8 +16,5 @@ public class GymCrmApplication {
     SpringApplication.run(GymCrmApplication.class, args);
   }
 
-  @Bean
-  RestTemplate restTemplate() {
-    return new RestTemplate();
-  }
+
 }

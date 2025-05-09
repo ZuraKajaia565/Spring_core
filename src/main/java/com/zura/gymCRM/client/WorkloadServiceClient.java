@@ -1,5 +1,6 @@
 package com.zura.gymCRM.client;
 
+import com.zura.gymCRM.dto.TrainerWorkloadResponse;
 import com.zura.gymCRM.dto.WorkloadRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -35,6 +36,9 @@ public interface WorkloadServiceClient {
             @PathVariable("month") int month,
             @RequestHeader("X-Transaction-ID") String transactionId);
 
+
+
+
     /**
      * Adds to a workload entry for a trainer in the workload service
      */
@@ -46,6 +50,13 @@ public interface WorkloadServiceClient {
             @PathVariable("month") int month,
             @RequestParam("duration") int duration,
             @RequestHeader("X-Transaction-ID") String transactionId);
+
+    @GetMapping("/api/trainers/{username}/workloads")
+    @CircuitBreaker(name = "workloadService", fallbackMethod = "getTrainerWorkloadSummaryFallback")
+    ResponseEntity<TrainerWorkloadResponse> getTrainerWorkloadSummary(
+            @PathVariable("username") String username,
+            @RequestHeader("X-Transaction-ID") String transactionId);
+
 
     /**
      * Subtracts from a workload entry for a trainer in the workload service

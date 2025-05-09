@@ -56,7 +56,7 @@ public class WorkloadNotificationService {
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate();
 
-            // Update the workload in the workload service
+            // Try to update the workload in the workload service
             ResponseEntity<Void> response = workloadServiceClient.updateWorkload(
                     trainer.getUser().getUsername(),
                     trainingDate.getYear(),
@@ -66,18 +66,18 @@ public class WorkloadNotificationService {
             );
 
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new WorkloadServiceException("Failed to notify workload service: "
-                        + response.getStatusCode());
+                logger.warn("Workload service returned non-success status: {}. Training will proceed anyway.",
+                        response.getStatusCode());
+                // We don't throw an exception here anymore
             }
 
             logger.debug("Successfully notified workload service about new training");
         } catch (Exception e) {
-            logger.error("Failed to notify workload service about new training: {}",
+            logger.error("Failed to notify workload service about new training: {}. Training will proceed anyway.",
                     e.getMessage(), e);
-            throw new WorkloadServiceException("Failed to notify workload service about new training", e);
+            // We don't rethrow the exception here anymore
         }
     }
-
     /**
      * Notifies the workload service about an updated training
      *
