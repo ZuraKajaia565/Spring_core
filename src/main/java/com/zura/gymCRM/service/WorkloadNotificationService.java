@@ -65,7 +65,7 @@ public class WorkloadNotificationService {
             logger.debug("Successfully notified workload service about new training");
         } catch (Exception e) {
             logger.error("Failed to notify workload service about new training: {}", e.getMessage(), e);
-            // Don't throw the exception here - just log it
+            throw new WorkloadServiceException("Failed to notify workload service about new training", e);
         }
     }
 

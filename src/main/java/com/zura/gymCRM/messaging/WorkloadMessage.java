@@ -2,6 +2,9 @@ package com.zura.gymCRM.messaging;
 
 import java.io.Serializable;
 
+/**
+ * Message object for communicating with the workload service via ActiveMQ
+ */
 public class WorkloadMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
