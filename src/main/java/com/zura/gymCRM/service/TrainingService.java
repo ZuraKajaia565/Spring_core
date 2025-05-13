@@ -1,8 +1,8 @@
 package com.zura.gymCRM.service;
 
-import com.zura.gymCRM.dao.TrainingRepository;
-import com.zura.gymCRM.entities.Training;
-import com.zura.gymCRM.exceptions.NotFoundException;
+import com.zura.gymCRM..TrainingRepository;
+import com.example.micro.entities.Training;
+import com.example.micro.exceptions.NotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
