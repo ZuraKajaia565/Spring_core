@@ -1,28 +1,56 @@
-Feature: Trainee Management
+Feature: Trainee Registration and Profile Management
 
-  Scenario: Register a new trainee
-    When I register a new trainee with first name "John" and last name "Doe"
+  Scenario: Register a new trainee with valid data
+    When I register a new trainee with the following details:
+      | firstName | John       |
+      | lastName  | Doe        |
+      | address   | 123 Main St|
+      | dateOfBirth| 1990-01-01|
     Then the trainee is registered successfully
-    And the trainee has a valid username and password
+    And the system returns a valid username and password
+    And the trainee is set as active by default
 
-  Scenario: Get trainee profile
-    Given a trainee with username "john.doe" exists
-    When I request the trainee profile for username "john.doe"
-    Then the trainee profile is returned successfully
-    And the trainee first name is "John" and last name is "Doe"
+  Scenario: Get trainee profile with valid username
+    Given a trainee with username "john.doe" exists in the system
+    When I request trainee profile information for "john.doe"
+    Then the system returns the trainee profile
+    And the profile contains correct personal information:
+      | firstName | John       |
+      | lastName  | Doe        |
+      | address   | 123 Main St|
+      | dateOfBirth| 1990-01-01|
 
-  Scenario: Update trainee profile
-    Given a trainee with username "john.doe" exists
-    When I update the trainee with new address "123 New Street"
-    Then the trainee is updated successfully
-    And the trainee address is "123 New Street"
+  Scenario: Update trainee profile with valid data
+    Given a trainee with username "john.doe" exists in the system
+    When I update trainee "john.doe" with the following information:
+      | firstName | John       |
+      | lastName  | Smith      |
+      | address   | 456 Oak Dr |
+    Then the trainee profile is updated successfully
+    And the system returns the updated profile
+    And the profile contains the new information:
+      | lastName  | Smith      |
+      | address   | 456 Oak Dr |
 
-  Scenario: Delete trainee
-    Given a trainee with username "john.doe" exists
-    When I delete the trainee with username "john.doe"
+  Scenario: Deactivate a trainee
+    Given a trainee with username "john.doe" exists in the system
+    And the trainee is active
+    When I deactivate trainee "john.doe"
+    Then the trainee is deactivated successfully
+    And the trainee status is set to inactive
+
+  Scenario: Delete a trainee
+    Given a trainee with username "john.doe" exists in the system
+    When I delete trainee "john.doe"
     Then the trainee is deleted successfully
     And the trainee no longer exists in the system
 
-  Scenario: Attempt to get non-existent trainee
-    When I request the trainee profile for username "nonexistent.user"
-    Then I receive a not found error for the trainee
+  Scenario: Get trainee profile with invalid username
+    When I request trainee profile information for "nonexistent.user"
+    Then the system returns a not found error
+
+  Scenario: Update trainee profile with invalid username
+    When I update trainee "nonexistent.user" with the following information:
+      | firstName | John       |
+      | lastName  | Smith      |
+    Then the system returns a not found error

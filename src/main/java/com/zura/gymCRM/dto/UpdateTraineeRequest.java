@@ -19,6 +19,9 @@ public class UpdateTraineeRequest {
   @NotNull(message = "Active status is required")
   private Boolean isActive;
 
+  public UpdateTraineeRequest() {
+
+  }
   public UpdateTraineeRequest(String firstName, String lastName,
                               Date dateOfBirth, String address, boolean isActive) {
     this.firstName = firstName;

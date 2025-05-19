@@ -1,5 +1,6 @@
 package com.zura.gymCRM;
 
+import com.zura.gymCRM.client.WorkloadServiceClient;
 import com.zura.gymCRM.dto.WorkloadRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

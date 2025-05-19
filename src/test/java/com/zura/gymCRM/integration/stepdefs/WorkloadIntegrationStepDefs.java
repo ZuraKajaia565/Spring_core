@@ -15,8 +15,8 @@ import com.zura.gymCRM.entities.User;
 import com.zura.gymCRM.facade.GymFacade;
 import com.zura.gymCRM.messaging.WorkloadMessage;
 import com.zura.gymCRM.messaging.WorkloadMessageProducer;
-import com.zura.gymCRM.service.TrainingService;
-import com.zura.gymCRM.service.WorkloadNotificationService;
+import com.zura.gymCRM.TrainingService;  // Fixed import path
+import com.zura.gymCRM.WorkloadNotificationService;  // Fixed import path
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -44,7 +44,7 @@ import org.springframework.test.context.ActiveProfiles;
 public class WorkloadIntegrationStepDefs {
 
   private static final Logger logger =
-      LoggerFactory.getLogger(WorkloadIntegrationStepDefs.class);
+          LoggerFactory.getLogger(WorkloadIntegrationStepDefs.class);
 
   @Autowired private GymFacade gymFacade;
 
@@ -80,15 +80,15 @@ public class WorkloadIntegrationStepDefs {
     // Mock workload service responses
     ResponseEntity<Void> okResponse = ResponseEntity.ok().build();
     when(workloadServiceClient.updateWorkload(anyString(), anyInt(), anyInt(),
-                                              any(WorkloadRequest.class),
-                                              anyString()))
-        .thenReturn(okResponse);
+            any(WorkloadRequest.class),
+            anyString()))
+            .thenReturn(okResponse);
     when(workloadServiceClient.deleteWorkload(anyString(), anyInt(), anyInt(),
-                                              anyString()))
-        .thenReturn(okResponse);
+            anyString()))
+            .thenReturn(okResponse);
     when(workloadServiceClient.addWorkload(anyString(), anyInt(), anyInt(),
-                                           anyInt(), anyString()))
-        .thenReturn(okResponse);
+            anyInt(), anyString()))
+            .thenReturn(okResponse);
 
     // Reset mocks to clear any previous interactions
     reset(workloadNotificationService);
@@ -97,8 +97,8 @@ public class WorkloadIntegrationStepDefs {
 
     // Mock successful message delivery
     doNothing()
-        .when(workloadMessageProducer)
-        .sendWorkloadMessage(any(WorkloadMessage.class));
+            .when(workloadMessageProducer)
+            .sendWorkloadMessage(any(WorkloadMessage.class));
   }
 
   @After
@@ -118,9 +118,9 @@ public class WorkloadIntegrationStepDefs {
   public void bothGymCRMAndWorkloadServicesAreRunning() {
     // This is a mock test, so we'll just verify our mocks are set up
     assertNotNull(workloadServiceClient,
-                  "Workload service client should be injected");
+            "Workload service client should be injected");
     assertNotNull(workloadMessageProducer,
-                  "Workload message producer should be injected");
+            "Workload message producer should be injected");
   }
 
   @Given("a trainer with username {string} exists in GymCRM")
@@ -130,19 +130,19 @@ public class WorkloadIntegrationStepDefs {
     try {
       // Check if trainer exists
       Optional<Trainer> existingTrainer =
-          gymFacade.selectTrainerByUsername(username);
+              gymFacade.selectTrainerByUsername(username);
       if (existingTrainer.isEmpty()) {
         // Create a new trainer
         Optional<TrainingType> trainingTypeOpt =
-            gymFacade.selectTrainingTypeByName("Strength");
+                gymFacade.selectTrainingTypeByName("Strength");
         if (trainingTypeOpt.isEmpty()) {
           throw new RuntimeException(
-              "Training type 'Strength' not found in database");
+                  "Training type 'Strength' not found in database");
         }
 
         TrainingType trainingType = trainingTypeOpt.get();
         Trainer trainer =
-            gymFacade.addTrainer("Test", "Trainer", true, trainingType);
+                gymFacade.addTrainer("Test", "Trainer", true, trainingType);
 
         // Set the username explicitly for testing
         User user = trainer.getUser();
@@ -152,10 +152,10 @@ public class WorkloadIntegrationStepDefs {
 
       // Also ensure a trainee exists for creating trainings
       Optional<Trainee> existingTrainee =
-          gymFacade.selectTraineeByusername(testTraineeUsername);
+              gymFacade.selectTraineeByusername(testTraineeUsername);
       if (existingTrainee.isEmpty()) {
         Trainee trainee = gymFacade.addTrainee("Test", "Trainee", true,
-                                               new Date(), "123 Main St");
+                new Date(), "123 Main St");
         User user = trainee.getUser();
         user.setUsername(testTraineeUsername);
         gymFacade.updateTrainee(trainee);
@@ -175,9 +175,9 @@ public class WorkloadIntegrationStepDefs {
     try {
       // Get trainer and trainee
       Optional<Trainer> trainerOpt =
-          gymFacade.selectTrainerByUsername(testTrainerUsername);
+              gymFacade.selectTrainerByUsername(testTrainerUsername);
       Optional<Trainee> traineeOpt =
-          gymFacade.selectTraineeByusername(testTraineeUsername);
+              gymFacade.selectTraineeByusername(testTraineeUsername);
 
       assertTrue(trainerOpt.isPresent(), "Trainer should exist");
       assertTrue(traineeOpt.isPresent(), "Trainee should exist");
@@ -187,8 +187,8 @@ public class WorkloadIntegrationStepDefs {
 
       // Create a training
       testTraining = gymFacade.addTraining(trainee, trainer, "Test Training",
-                                           trainer.getSpecialization(),
-                                           new Date(), duration);
+              trainer.getSpecialization(),
+              new Date(), duration);
 
       testTrainingId = testTraining.getId();
     } catch (Exception e) {
@@ -202,34 +202,34 @@ public class WorkloadIntegrationStepDefs {
   public void theWorkloadServiceIsNotifiedAboutTheNewTraining() {
     // Verify the WorkloadNotificationService was called
     verify(workloadNotificationService)
-        .notifyTrainingCreated(trainingCaptor.capture());
+            .notifyTrainingCreated(trainingCaptor.capture());
 
     // Verify the captured training matches our test training
     Training capturedTraining = trainingCaptor.getValue();
     assertEquals(
-        testTrainingId, capturedTraining.getId(),
-        "The correct training should be passed to notification service");
+            testTrainingId, capturedTraining.getId(),
+            "The correct training should be passed to notification service");
     assertEquals(testDuration, capturedTraining.getTrainingDuration(),
-                 "Training duration should match");
+            "Training duration should match");
 
     // We might also verify the message producer was called with the correct
     // message
     verify(workloadMessageProducer, atLeastOnce())
-        .sendWorkloadMessage(messageCaptor.capture());
+            .sendWorkloadMessage(messageCaptor.capture());
 
     // At least one of the captured messages should have the correct data
     boolean foundMatchingMessage = false;
     for (WorkloadMessage capturedMessage : messageCaptor.getAllValues()) {
       if (capturedMessage.getUsername().equals(testTrainerUsername) &&
-          capturedMessage.getTrainingDuration() == testDuration) {
+              capturedMessage.getTrainingDuration() == testDuration) {
         foundMatchingMessage = true;
         break;
       }
     }
 
     assertTrue(
-        foundMatchingMessage,
-        "A message with the correct trainer and duration should be sent");
+            foundMatchingMessage,
+            "A message with the correct trainer and duration should be sent");
   }
 
   @Then("the trainer's workload is updated to {int} minutes")
@@ -237,9 +237,9 @@ public class WorkloadIntegrationStepDefs {
     // Since we've mocked the workload service client, we can verify it was
     // called correctly Extract year and month from the training date
     LocalDate trainingDate = testTraining.getTrainingDate()
-                                 .toInstant()
-                                 .atZone(ZoneId.systemDefault())
-                                 .toLocalDate();
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate();
 
     int year = trainingDate.getYear();
     int month = trainingDate.getMonthValue();
@@ -247,16 +247,16 @@ public class WorkloadIntegrationStepDefs {
     // Verify the workload client was called - either through direct API or via
     // message
     verify(workloadMessageProducer, atLeastOnce())
-        .sendWorkloadMessage(argThat(
-            message
-            -> message.getUsername().equals(testTrainerUsername) &&
-                   message.getYear() == year && message.getMonth() == month &&
-                   message.getTrainingDuration() == expectedDuration));
+            .sendWorkloadMessage(argThat(
+                    message
+                            -> message.getUsername().equals(testTrainerUsername) &&
+                            message.getYear() == year && message.getMonth() == month &&
+                            message.getTrainingDuration() == expectedDuration));
 
     // Or verify the client was called directly
     verify(workloadServiceClient, atLeastOnce())
-        .updateWorkload(eq(testTrainerUsername), eq(year), eq(month),
-                        any(WorkloadRequest.class), anyString());
+            .updateWorkload(eq(testTrainerUsername), eq(year), eq(month),
+                    any(WorkloadRequest.class), anyString());
   }
 
   @Given("the trainer has a training with {int} minutes")
@@ -272,16 +272,16 @@ public class WorkloadIntegrationStepDefs {
     // Re-establish mock behavior
     ResponseEntity<Void> okResponse = ResponseEntity.ok().build();
     when(workloadServiceClient.updateWorkload(anyString(), anyInt(), anyInt(),
-                                              any(WorkloadRequest.class),
-                                              anyString()))
-        .thenReturn(okResponse);
+            any(WorkloadRequest.class),
+            anyString()))
+            .thenReturn(okResponse);
     when(workloadServiceClient.deleteWorkload(anyString(), anyInt(), anyInt(),
-                                              anyString()))
-        .thenReturn(okResponse);
+            anyString()))
+            .thenReturn(okResponse);
 
     doNothing()
-        .when(workloadMessageProducer)
-        .sendWorkloadMessage(any(WorkloadMessage.class));
+            .when(workloadMessageProducer)
+            .sendWorkloadMessage(any(WorkloadMessage.class));
   }
 
   @When("the training duration is updated to {int} minutes")
@@ -291,7 +291,7 @@ public class WorkloadIntegrationStepDefs {
 
       // Get the training
       Optional<Training> trainingOpt =
-          trainingService.getTraining(testTrainingId);
+              trainingService.getTraining(testTrainingId);
       assertTrue(trainingOpt.isPresent(), "Training should exist");
 
       // Update the training
@@ -309,34 +309,34 @@ public class WorkloadIntegrationStepDefs {
   public void theWorkloadServiceIsNotifiedAboutTheUpdatedTraining() {
     // Verify the notification service was called
     verify(workloadNotificationService)
-        .notifyTrainingUpdated(trainingCaptor.capture());
+            .notifyTrainingUpdated(trainingCaptor.capture());
 
     // Verify the captured training matches our test training
     Training capturedTraining = trainingCaptor.getValue();
     assertEquals(
-        testTrainingId, capturedTraining.getId(),
-        "The correct training should be passed to notification service");
+            testTrainingId, capturedTraining.getId(),
+            "The correct training should be passed to notification service");
     assertEquals(testDuration, capturedTraining.getTrainingDuration(),
-                 "Updated training duration should match");
+            "Updated training duration should match");
 
     // Also verify message producer was called
     verify(workloadMessageProducer, atLeastOnce())
-        .sendWorkloadMessage(messageCaptor.capture());
+            .sendWorkloadMessage(messageCaptor.capture());
 
     // One of the captured messages should have the correct data
     boolean foundMatchingMessage = false;
     for (WorkloadMessage capturedMessage : messageCaptor.getAllValues()) {
       if (capturedMessage.getUsername().equals(testTrainerUsername) &&
-          capturedMessage.getTrainingDuration() == testDuration &&
-          capturedMessage.getMessageType() ==
-              WorkloadMessage.MessageType.CREATE_UPDATE) {
+              capturedMessage.getTrainingDuration() == testDuration &&
+              capturedMessage.getMessageType() ==
+                      WorkloadMessage.MessageType.CREATE_UPDATE) {
         foundMatchingMessage = true;
         break;
       }
     }
 
     assertTrue(foundMatchingMessage, "A message with the correct trainer and " +
-                                     "updated duration should be sent");
+            "updated duration should be sent");
   }
 
   @When("the training is deleted")
@@ -355,27 +355,27 @@ public class WorkloadIntegrationStepDefs {
   public void theWorkloadServiceIsNotifiedAboutTheDeletedTraining() {
     // Verify the notification service was called
     verify(workloadNotificationService)
-        .notifyTrainingDeleted(any(Training.class));
+            .notifyTrainingDeleted(any(Training.class));
 
     // Also verify message producer was called with DELETE message type
     verify(workloadMessageProducer, atLeastOnce())
-        .sendWorkloadMessage(
-            argThat(message
-                    -> message.getUsername().equals(testTrainerUsername) &&
-                           message.getMessageType() ==
-                               WorkloadMessage.MessageType.DELETE));
+            .sendWorkloadMessage(
+                    argThat(message
+                            -> message.getUsername().equals(testTrainerUsername) &&
+                            message.getMessageType() ==
+                                    WorkloadMessage.MessageType.DELETE));
 
     // Or verify the client was called directly with delete
     LocalDate trainingDate = testTraining.getTrainingDate()
-                                 .toInstant()
-                                 .atZone(ZoneId.systemDefault())
-                                 .toLocalDate();
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate();
 
     int year = trainingDate.getYear();
     int month = trainingDate.getMonthValue();
 
     verify(workloadServiceClient, atLeastOnce())
-        .deleteWorkload(eq(testTrainerUsername), eq(year), eq(month),
-                        anyString());
+            .deleteWorkload(eq(testTrainerUsername), eq(year), eq(month),
+                    anyString());
   }
 }

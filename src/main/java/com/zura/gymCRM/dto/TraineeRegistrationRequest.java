@@ -12,6 +12,9 @@ public class TraineeRegistrationRequest {
   private Date dateOfBirth;
   private String address;
 
+  public TraineeRegistrationRequest() {
+
+  }
   public TraineeRegistrationRequest(String firstName, String lastName,
                                     Date dateOfBirth, String address) {
     this.firstName = firstName;

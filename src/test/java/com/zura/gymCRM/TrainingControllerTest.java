@@ -1,5 +1,6 @@
 package com.zura.gymCRM;
 
+import com.zura.gymCRM.controller.TrainingController;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
