@@ -1,4 +1,4 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.security.TokenBlacklistService;
 import org.junit.jupiter.api.BeforeEach;

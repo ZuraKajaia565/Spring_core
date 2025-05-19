@@ -1,4 +1,4 @@
-package com.zura.gymCRM.controller;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
@@ -6,7 +6,6 @@ import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.TrainingType;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.facade.GymFacade;
-import com.zura.gymCRM.service.TrainingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

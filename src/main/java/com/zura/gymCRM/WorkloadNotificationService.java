@@ -1,8 +1,7 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.client.WorkloadServiceClient;
 import com.zura.gymCRM.dto.WorkloadRequest;
-import com.zura.gymCRM.dto.WorkloadUpdateDto;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.exceptions.WorkloadServiceException;

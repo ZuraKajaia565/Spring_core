@@ -1,4 +1,4 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.dao.TraineeRepository;
 import com.zura.gymCRM.entities.Trainee;
@@ -7,7 +7,6 @@ import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.security.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.Optional;
 

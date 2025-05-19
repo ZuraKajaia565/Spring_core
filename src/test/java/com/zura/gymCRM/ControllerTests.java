@@ -1,4 +1,4 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zura.gymCRM.controller.LoginController;

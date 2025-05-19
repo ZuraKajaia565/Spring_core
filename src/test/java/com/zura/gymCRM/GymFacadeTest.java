@@ -1,25 +1,16 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-import com.zura.gymCRM.dao.TraineeRepository;
-import com.zura.gymCRM.dao.TrainerRepository;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.TrainingType;
 import com.zura.gymCRM.entities.User;
-import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.facade.GymFacade;
 import com.zura.gymCRM.security.PasswordUtil;
-import com.zura.gymCRM.service.TraineeService;
-import com.zura.gymCRM.service.TrainerService;
-import com.zura.gymCRM.service.TrainingService;
-import com.zura.gymCRM.service.TrainingTypeService;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

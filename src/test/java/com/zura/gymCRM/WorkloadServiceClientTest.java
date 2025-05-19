@@ -1,4 +1,4 @@
-package com.zura.gymCRM.client;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.dto.WorkloadRequest;
 import org.junit.jupiter.api.BeforeEach;

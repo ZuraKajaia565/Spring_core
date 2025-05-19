@@ -1,4 +1,4 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.dao.TrainingTypeRepository;
 import com.zura.gymCRM.entities.TrainingType;

@@ -1,11 +1,10 @@
-package com.zura.gymCRM.service;
+package com.zura.gymCRM;
 
 import com.zura.gymCRM.dao.TrainerRepository;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.User;
-import com.zura.gymCRM.exceptions.AddException;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.security.PasswordUtil;
 import jakarta.persistence.EntityNotFoundException;
