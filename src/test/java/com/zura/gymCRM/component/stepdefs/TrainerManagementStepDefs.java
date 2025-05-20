@@ -119,9 +119,12 @@ public class TrainerManagementStepDefs {
     assertEquals(201, responseStatus, "HTTP Status should be 201 CREATED");
   }
 
-  // Removed the duplicate method:
-  // @And("the system returns a valid username and password")
-  // public void theSystemReturnsAValidUsernameAndPassword() { ... }
+  // Removed duplicate step definition
+  // Use the one from CommonStepDefs.java instead
+  /*
+  @And("the system returns a valid username and password")
+  public void theSystemReturnsAValidUsernameAndPassword() { ... }
+  */
 
   @And("the trainer is set as active by default")
   public void theTrainerIsSetAsActiveByDefault() {
@@ -278,6 +281,9 @@ public class TrainerManagementStepDefs {
     assertEquals(200, responseStatus, "HTTP Status should be 200 OK");
   }
 
+  // Removed duplicate step definition
+  // Use the one from CommonStepDefs.java instead
+  /*
   @And("the system returns the updated profile")
   public void theSystemReturnsTheUpdatedProfile() {
     try {
@@ -298,6 +304,7 @@ public class TrainerManagementStepDefs {
       fail("Failed to check response content: " + e.getMessage());
     }
   }
+  */
 
   @Given("the trainer is active")
   public void theTrainerIsActive() {

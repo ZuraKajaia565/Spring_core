@@ -3,6 +3,7 @@ package com.zura.gymCRM.component.stepdefs;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zura.gymCRM.component.helper.MockMvcAuthHelper;
 import com.zura.gymCRM.dto.TraineeProfileResponse;
 import com.zura.gymCRM.dto.TraineeRegistrationRequest;
 import com.zura.gymCRM.dto.TraineeRegistrationResponse;
@@ -51,10 +52,15 @@ public class TraineeManagementStepDefs {
     @Autowired
     private StepDataContext stepDataContext;
 
+    @Autowired
+    private MockMvcAuthHelper authHelper;
+
     private TraineeRegistrationRequest registrationRequest;
     private MvcResult mvcResult;
     private int responseStatus;
     private Exception lastException;
+    private String authToken;
+    private String testUserDateOfBirth = "1990-01-01";
 
     @Before
     public void setUp() {
@@ -62,6 +68,10 @@ public class TraineeManagementStepDefs {
         mvcResult = null;
         responseStatus = 0;
         lastException = null;
+
+        // Set up a default authentication for all tests
+        authHelper.setUpSecurityContext("test-user", "USER");
+        authToken = authHelper.createJwtToken("test-user", "USER");
     }
 
     @When("I register a new trainee with the following details:")
@@ -76,7 +86,8 @@ public class TraineeManagementStepDefs {
 
             if (data.containsKey("dateOfBirth") && data.get("dateOfBirth") != null) {
                 try {
-                    Date dateOfBirth = DATE_FORMAT.parse(data.get("dateOfBirth"));
+                    testUserDateOfBirth = data.get("dateOfBirth");
+                    Date dateOfBirth = DATE_FORMAT.parse(testUserDateOfBirth);
                     registrationRequest.setDateOfBirth(dateOfBirth);
                 } catch (ParseException e) {
                     logger.error("Error parsing date: {}", e.getMessage());
@@ -94,6 +105,7 @@ public class TraineeManagementStepDefs {
 
             responseStatus = mvcResult.getResponse().getStatus();
             stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error in registering trainee: {}", e.getMessage(), e);
             lastException = e;
@@ -105,21 +117,6 @@ public class TraineeManagementStepDefs {
     @Then("the trainee is registered successfully")
     public void theTraineeIsRegisteredSuccessfully() {
         assertEquals(201, responseStatus, "HTTP Status should be 201 CREATED");
-    }
-
-    @And("the system returns a valid username and password")
-    public void theSystemReturnsAValidUsernameAndPassword() {
-        try {
-            String responseBody = mvcResult.getResponse().getContentAsString();
-            TraineeRegistrationResponse response = objectMapper.readValue(responseBody, TraineeRegistrationResponse.class);
-
-            assertNotNull(response.getUsername(), "Username should not be null");
-            assertNotNull(response.getPassword(), "Password should not be null");
-            assertTrue(response.getPassword().length() >= 10, "Password should be at least 10 characters");
-        } catch (Exception e) {
-            logger.error("Error validating username/password: {}", e.getMessage(), e);
-            fail("Failed to validate username/password: " + e.getMessage());
-        }
     }
 
     @And("the trainee is set as active by default")
@@ -149,41 +146,87 @@ public class TraineeManagementStepDefs {
 
                 // First try direct creation through gymFacade
                 try {
-                    gymFacade.addTrainee("John", "Doe", true, new Date(), "123 Main St");
+                    // Parse the test date of birth
+                    Date dateOfBirth;
+                    try {
+                        dateOfBirth = DATE_FORMAT.parse(testUserDateOfBirth);
+                    } catch (ParseException e) {
+                        dateOfBirth = new Date(); // fallback to current date
+                        logger.error("Error parsing test date of birth: {}", e.getMessage());
+                    }
 
-                    // Get the created trainee and update its username for testing
-                    Optional<Trainee> newTrainee = gymFacade.selectTraineeByusername("John.Doe");
-                    if (newTrainee.isPresent()) {
-                        Trainee t = newTrainee.get();
-                        t.getUser().setUsername(username);
-                        gymFacade.updateTrainee(t);
-                    } else {
-                        logger.warn("Failed to find newly created trainee, trying alternative approach");
+                    Trainee trainee = gymFacade.addTrainee("John", "Doe", true, dateOfBirth, "123 Main St");
 
-                        // Alternative approach with manual User creation
-                        User user = new User();
-                        user.setFirstName("John");
-                        user.setLastName("Doe");
-                        user.setUsername(username);
-                        user.setPassword("password123");
-                        user.setIsActive(true);
-
-                        Trainee trainee = new Trainee();
-                        trainee.setUser(user);
-                        trainee.setDateOfBirth(new Date());
-                        trainee.setAddress("123 Main St");
-
+                    // If username is provided and differs from the auto-generated one, update it
+                    if (!username.equals(trainee.getUser().getUsername())) {
+                        trainee.getUser().setUsername(username);
                         gymFacade.updateTrainee(trainee);
                     }
                 } catch (Exception e) {
                     logger.error("Error creating trainee: {}", e.getMessage(), e);
-                    throw e;
+
+                    // Alternative approach with manual User creation
+                    User user = new User();
+                    user.setFirstName("John");
+                    user.setLastName("Doe");
+                    user.setUsername(username);
+                    user.setPassword("password123");
+                    user.setIsActive(true);
+
+                    Trainee trainee = new Trainee();
+                    trainee.setUser(user);
+
+                    // Parse the test date of birth
+                    try {
+                        trainee.setDateOfBirth(DATE_FORMAT.parse(testUserDateOfBirth));
+                    } catch (ParseException ex) {
+                        trainee.setDateOfBirth(new Date()); // fallback to current date
+                        logger.error("Error parsing test date of birth: {}", ex.getMessage());
+                    }
+
+                    trainee.setAddress("123 Main St");
+
+                    gymFacade.updateTrainee(trainee);
+                }
+            } else {
+                // If trainee exists but has the wrong date of birth, update it
+                Trainee trainee = traineeOpt.get();
+                try {
+                    Date expectedDob = DATE_FORMAT.parse(testUserDateOfBirth);
+                    String actualDateStr = "";
+                    if (trainee.getDateOfBirth() != null) {
+                        actualDateStr = DATE_FORMAT.format(trainee.getDateOfBirth());
+                    }
+
+                    if (!testUserDateOfBirth.equals(actualDateStr)) {
+                        trainee.setDateOfBirth(expectedDob);
+                        gymFacade.updateTrainee(trainee);
+                        logger.info("Updated trainee date of birth to: {}", testUserDateOfBirth);
+                    }
+                } catch (ParseException e) {
+                    logger.error("Error parsing date: {}", e.getMessage());
                 }
             }
 
-            // Verify the trainee exists
+            // Verify the trainee exists with correct data
             traineeOpt = gymFacade.selectTraineeByusername(username);
             assertTrue(traineeOpt.isPresent(), "Trainee should exist for test: " + username);
+
+            // Verify date of birth
+            Trainee trainee = traineeOpt.get();
+            try {
+                Date expectedDob = DATE_FORMAT.parse(testUserDateOfBirth);
+                if (!DATE_FORMAT.format(expectedDob).equals(DATE_FORMAT.format(trainee.getDateOfBirth()))) {
+                    logger.warn("Date of birth mismatch for trainee {}: expected {}, actual {}",
+                            username, testUserDateOfBirth, DATE_FORMAT.format(trainee.getDateOfBirth()));
+
+                    // Try to update it again
+                    trainee.setDateOfBirth(expectedDob);
+                    gymFacade.updateTrainee(trainee);
+                }
+            } catch (ParseException e) {
+                logger.error("Error parsing date: {}", e.getMessage());
+            }
         } catch (Exception e) {
             logger.error("Error in trainee setup: {}", e.getMessage(), e);
             fail("Failed to set up trainee: " + e.getMessage());
@@ -195,11 +238,13 @@ public class TraineeManagementStepDefs {
         try {
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.get("/api/trainees/{username}", username)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .accept(MediaType.APPLICATION_JSON))
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
             stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error requesting trainee profile: {}", e.getMessage(), e);
             lastException = e;
@@ -227,7 +272,8 @@ public class TraineeManagementStepDefs {
 
             // Optional date of birth check
             if (expectedData.containsKey("dateOfBirth") && expectedData.get("dateOfBirth") != null) {
-                Date expectedDob = DATE_FORMAT.parse(expectedData.get("dateOfBirth"));
+                testUserDateOfBirth = expectedData.get("dateOfBirth");
+                Date expectedDob = DATE_FORMAT.parse(testUserDateOfBirth);
                 // Note: Due to time component differences, compare just the date parts
                 String expectedDateStr = DATE_FORMAT.format(expectedDob);
                 String actualDateStr = DATE_FORMAT.format(profile.getDateOfBirth());
@@ -255,7 +301,8 @@ public class TraineeManagementStepDefs {
 
             if (data.containsKey("dateOfBirth")) {
                 try {
-                    Date dateOfBirth = DATE_FORMAT.parse(data.get("dateOfBirth"));
+                    testUserDateOfBirth = data.get("dateOfBirth");
+                    Date dateOfBirth = DATE_FORMAT.parse(testUserDateOfBirth);
                     updateRequest.setDateOfBirth(dateOfBirth);
                 } catch (ParseException e) {
                     logger.error("Error parsing date: {}", e.getMessage());
@@ -266,12 +313,14 @@ public class TraineeManagementStepDefs {
 
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.put("/api/trainees/{username}", username)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(requestBody))
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
             stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error updating trainee: {}", e.getMessage(), e);
             lastException = e;
@@ -283,27 +332,6 @@ public class TraineeManagementStepDefs {
     @Then("the trainee profile is updated successfully")
     public void theTraineeProfileIsUpdatedSuccessfully() {
         assertEquals(200, responseStatus, "HTTP Status should be 200 OK");
-    }
-
-    @And("the system returns the updated profile")
-    public void theSystemReturnsTheUpdatedProfile() {
-        try {
-            // First check if mvcResult is not null
-            assertNotNull(mvcResult, "MvcResult should not be null");
-
-            // Then check if the response is not null
-            assertNotNull(mvcResult.getResponse(), "Response should not be null");
-
-            // Check if the response contains some content (even if it's empty JSON)
-            String responseContent = mvcResult.getResponse().getContentAsString();
-
-            // Don't assert that the content is not empty, just that we can read it
-            // The content might be valid even if it's an empty string
-            logger.info("Response content: {}", responseContent);
-        } catch (Exception e) {
-            logger.error("Error checking response content: {}", e.getMessage(), e);
-            fail("Failed to check response content: " + e.getMessage());
-        }
     }
 
     @And("the profile contains the new information:")
@@ -346,12 +374,14 @@ public class TraineeManagementStepDefs {
 
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.patch("/api/trainees/{username}/status", username)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(requestBody))
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
             stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error deactivating trainee: {}", e.getMessage(), e);
             lastException = e;
@@ -386,11 +416,13 @@ public class TraineeManagementStepDefs {
     public void iDeleteTrainee(String username) {
         try {
             mvcResult = mockMvc.perform(
-                            MockMvcRequestBuilders.delete("/api/trainees/{username}", username))
+                            MockMvcRequestBuilders.delete("/api/trainees/{username}", username)
+                                    .header("Authorization", "Bearer " + authToken))
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
             stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error deleting trainee: {}", e.getMessage(), e);
             lastException = e;
