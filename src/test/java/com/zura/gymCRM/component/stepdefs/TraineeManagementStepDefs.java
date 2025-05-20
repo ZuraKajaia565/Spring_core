@@ -50,10 +50,13 @@ public class TraineeManagementStepDefs {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     private TraineeRegistrationRequest registrationRequest;
     private MvcResult mvcResult;
     private int responseStatus;
     private Exception lastException;
+
+
 
     @Before
     public void setUp() {

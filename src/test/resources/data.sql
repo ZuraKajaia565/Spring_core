@@ -1,5 +1,4 @@
 
-DELETE FROM trainingtype;
 -- Insert test training types
 INSERT INTO trainingtype (trainingtype_id, training_type_name) VALUES (1, 'Strength');
 INSERT INTO trainingtype (trainingtype_id, training_type_name) VALUES (2, 'Cardio');
