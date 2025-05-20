@@ -1,11 +1,13 @@
 package com.zura.gymCRM.component.stepdefs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zura.gymCRM.component.helper.MockMvcAuthHelper;
 import com.zura.gymCRM.entities.Trainee;
 import com.zura.gymCRM.entities.Trainer;
 import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.TrainingType;
 import com.zura.gymCRM.entities.User;
+import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.facade.GymFacade;
 import com.zura.gymCRM.TrainingService;
 import io.cucumber.datatable.DataTable;
@@ -48,6 +50,9 @@ public class TrainingManagementStepDefs {
     @Autowired
     private StepDataContext stepDataContext;
 
+    @Autowired
+    private MockMvcAuthHelper authHelper;
+
     private Trainee trainee;
     private Trainer trainer;
     private Training training;
@@ -57,6 +62,7 @@ public class TrainingManagementStepDefs {
     private Exception lastException;
     private List<Training> traineeTrainings = new ArrayList<>();
     private List<Training> trainerTrainings = new ArrayList<>();
+    private String authToken;
 
     @Before
     public void setUp() {
@@ -68,6 +74,10 @@ public class TrainingManagementStepDefs {
         lastException = null;
         traineeTrainings = new ArrayList<>();
         trainerTrainings = new ArrayList<>();
+
+        // Set up authentication for tests
+        authHelper.setUpSecurityContext("test-user", "USER");
+        authToken = authHelper.createJwtToken("test-user", "USER");
     }
 
     @Given("a training with id {string} exists in the system")
@@ -173,6 +183,7 @@ public class TrainingManagementStepDefs {
 
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.put(url + paramsBuilder.toString())
+                                    .header("Authorization", "Bearer " + authToken)
                                     .contentType(MediaType.APPLICATION_JSON))
                     .andReturn();
 
@@ -233,7 +244,8 @@ public class TrainingManagementStepDefs {
             String url = "/training/" + training.getId();
 
             mvcResult = mockMvc.perform(
-                            MockMvcRequestBuilders.delete(url))
+                            MockMvcRequestBuilders.delete(url)
+                                    .header("Authorization", "Bearer " + authToken))
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
@@ -323,6 +335,7 @@ public class TrainingManagementStepDefs {
 
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.get(url)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .accept(MediaType.APPLICATION_JSON))
                     .andReturn();
 
@@ -425,6 +438,7 @@ public class TrainingManagementStepDefs {
 
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.get(url)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .accept(MediaType.APPLICATION_JSON))
                     .andReturn();
 
@@ -460,10 +474,27 @@ public class TrainingManagementStepDefs {
         try {
             String url = "/api/trainees/" + username + "/trainings";
 
+            // Format the date properly to avoid 400 error
+            SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd");
+            Date fromDateObj = null;
+            Date toDateObj = null;
+
+            try {
+                fromDateObj = isoFormat.parse(fromDate);
+                toDateObj = isoFormat.parse(toDate);
+            } catch (ParseException e) {
+                logger.error("Error parsing dates: {}", e.getMessage());
+            }
+
+            // Use ISO 8601 format for query parameters
+            String fromDateParam = isoFormat.format(fromDateObj);
+            String toDateParam = isoFormat.format(toDateObj);
+
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.get(url)
-                                    .param("periodFrom", fromDate)
-                                    .param("periodTo", toDate)
+                                    .param("periodFrom", fromDateParam)
+                                    .param("periodTo", toDateParam)
+                                    .header("Authorization", "Bearer " + authToken)
                                     .accept(MediaType.APPLICATION_JSON))
                     .andReturn();
 
@@ -528,6 +559,7 @@ public class TrainingManagementStepDefs {
                                     .param("trainingName", trainingName)
                                     .param("trainingDate", trainingDateStr)
                                     .param("trainingDuration", String.valueOf(trainingDuration))
+                                    .header("Authorization", "Bearer " + authToken)
                                     .contentType(MediaType.APPLICATION_JSON))
                     .andReturn();
 
