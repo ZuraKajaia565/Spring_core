@@ -32,4 +32,6 @@ public class TestSecurityConfig {
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring().anyRequest();
     }
+
+    
 }

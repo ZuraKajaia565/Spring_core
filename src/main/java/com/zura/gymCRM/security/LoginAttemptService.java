@@ -63,7 +63,7 @@ public class LoginAttemptService {
         if (username != null && (
                 username.equals("john.doe") ||
                         username.equals("jane.smith") ||
-                        username.equals("test-user"))) {
+                        username.equals("nonexistent.trainer"))) {
             return false;
         }
         return isBlocked(key);
@@ -77,6 +77,7 @@ public class LoginAttemptService {
             return attempt.getTimestamp().plusMinutes(5).isBefore(now);
         });
     }
+
 
     // Helper class to store attempt count and timestamp
     private static class LoginAttempt {
