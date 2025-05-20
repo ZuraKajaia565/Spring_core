@@ -149,7 +149,7 @@ public class AuthenticationStepDefs {
                 boolean newMatches = passwordUtil.matches(newPassword, traineeOpt.get().getUser().getPassword());
                 logger.info("New password matches: {}", newMatches);
 
-                
+
 
             } else if (trainerOpt.isPresent()) {
                 logger.info("Found trainer with username: {}", currentUsername);
