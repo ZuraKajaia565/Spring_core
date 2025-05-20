@@ -33,8 +33,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-// Remove @CucumberContextConfiguration from here, it should be in a separate configuration class
-// The annotation will be moved to a CucumberSpringContextConfiguration class
 @AutoConfigureMockMvc
 public class TraineeManagementStepDefs {
 
@@ -50,13 +48,13 @@ public class TraineeManagementStepDefs {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private StepDataContext stepDataContext;
 
     private TraineeRegistrationRequest registrationRequest;
     private MvcResult mvcResult;
     private int responseStatus;
     private Exception lastException;
-
-
 
     @Before
     public void setUp() {
@@ -95,9 +93,11 @@ public class TraineeManagementStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
         } catch (Exception e) {
             logger.error("Error in registering trainee: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to register trainee: " + e.getMessage());
         }
     }
@@ -199,9 +199,11 @@ public class TraineeManagementStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
         } catch (Exception e) {
             logger.error("Error requesting trainee profile: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to request trainee profile: " + e.getMessage());
         }
     }
@@ -269,9 +271,11 @@ public class TraineeManagementStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
         } catch (Exception e) {
             logger.error("Error updating trainee: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to update trainee: " + e.getMessage());
         }
     }
@@ -301,6 +305,7 @@ public class TraineeManagementStepDefs {
             fail("Failed to check response content: " + e.getMessage());
         }
     }
+
     @And("the profile contains the new information:")
     public void theProfileContainsTheNewInformation(DataTable dataTable) {
         try {
@@ -346,9 +351,11 @@ public class TraineeManagementStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
         } catch (Exception e) {
             logger.error("Error deactivating trainee: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to deactivate trainee: " + e.getMessage());
         }
     }
@@ -383,9 +390,11 @@ public class TraineeManagementStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
         } catch (Exception e) {
             logger.error("Error deleting trainee: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to delete trainee: " + e.getMessage());
         }
     }
@@ -415,13 +424,5 @@ public class TraineeManagementStepDefs {
                 fail("Failed to check if trainee exists: " + e.getMessage());
             }
         }
-    }
-
-    @Then("the system returns a not found error")
-    public void theSystemReturnsANotFoundError() {
-        // Your API might return different status codes for not found
-        // Check for common error codes
-        assertTrue(responseStatus == 400 || responseStatus == 404,
-                "HTTP Status should be an error code (400 or 404), but was: " + responseStatus);
     }
 }
