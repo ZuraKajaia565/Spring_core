@@ -20,6 +20,8 @@ public class TrainerRegistrationRequest {
     this.specialization = specialization;
   }
 
+
+
   public String getFirstName() { return firstName; }
 
   public void setFirstName(String firstName) { this.firstName = firstName; }

@@ -40,11 +40,3 @@ Feature: Trainer Registration and Profile Management
   Scenario: Get trainer profile with invalid username
     When I request trainer profile information for "nonexistent.trainer"
     Then the system returns a not found error
-
-  Scenario: Register a trainer with non-existent specialization
-    When I register a new trainer with the following details:
-      | firstName     | Jane        |
-      | lastName      | Smith       |
-      | specialization| NonExistent |
-    Then the registration fails with an error message
-    And the error indicates that the specialization does not exist

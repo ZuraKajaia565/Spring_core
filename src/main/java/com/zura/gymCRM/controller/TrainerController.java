@@ -38,25 +38,41 @@ public class TrainerController {
 
   @PostMapping("")
   @Operation(summary = "Trainer Registration", description = "Trainer Registration - Public endpoint, no authentication required")
-  public ResponseEntity<?>
-  registerTrainer(@RequestBody @Valid TrainerRegistrationRequest trainerDTO) {
+  public ResponseEntity<?> registerTrainer(@RequestBody @Valid TrainerRegistrationRequest trainerDTO) {
     try {
-      Optional<TrainingType> trainingtype = gymFacade.selectTrainingTypeByID(
+      // Validate specialization exists FIRST before creating any user
+      if (trainerDTO.getSpecialization() == null || trainerDTO.getSpecialization().getId() == null) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Invalid specialization: Specialization is required");
+      }
+
+      // Look up the specialization by ID - do this before any user creation
+      Optional<TrainingType> trainingType = gymFacade.selectTrainingTypeByID(
               trainerDTO.getSpecialization().getId());
-      if (trainingtype.isEmpty() ||
-              !trainingtype.get().getTrainingTypeName().equals(
-                      trainerDTO.getSpecialization().getTrainingTypeName())) {
+
+      if (trainingType.isEmpty()) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("Invalid specialization: TrainingType not found");
       }
+
+      // Verify the name matches what was provided
+      if (!trainingType.get().getTrainingTypeName().equals(
+              trainerDTO.getSpecialization().getTrainingTypeName())) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Invalid specialization: TrainingType name mismatch");
+      }
+
+      // Now that we've validated the specialization, proceed with trainer creation
       Trainer createdTrainer = gymFacade.addTrainer(
               trainerDTO.getFirstName(), trainerDTO.getLastName(), true,
-              trainerDTO.getSpecialization());
+              trainingType.get());  // Use the validated training type
+
       return ResponseEntity.status(HttpStatus.CREATED)
               .body(new TrainerRegistrationResponse(
                       createdTrainer.getUser().getUsername(),
                       createdTrainer.getUser().getPassword()));
     } catch (Exception e) {
+
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
               .body("An unexpected error occurred: " + e.getMessage());
     }

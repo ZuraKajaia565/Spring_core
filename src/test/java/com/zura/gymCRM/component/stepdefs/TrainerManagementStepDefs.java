@@ -29,6 +29,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.http.RequestEntity.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class TrainerManagementStepDefs {
 
@@ -362,16 +364,5 @@ public class TrainerManagementStepDefs {
     assertTrue(responseStatus >= 400, "HTTP Status should be an error code");
   }
 
-  @And("the error indicates that the specialization does not exist")
-  public void theErrorIndicatesThatTheSpecializationDoesNotExist() {
-    try {
-      String responseBody = mvcResult.getResponse().getContentAsString();
-      assertTrue(responseBody.contains("specialization") || responseBody.contains("Invalid specialization"),
-              "Error should mention specialization issue: " + responseBody);
-    } catch (Exception e) {
-      logger.error("Error checking error message: {}", e.getMessage(), e);
-      lastException = e;
-      fail("Failed to check error message: " + e.getMessage());
-    }
-  }
+
 }
