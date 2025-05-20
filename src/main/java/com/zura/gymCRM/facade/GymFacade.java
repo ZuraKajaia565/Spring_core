@@ -283,6 +283,19 @@ try {
   }
 
   @Transactional
+  public void deleteTraining(Long trainingId) {
+    String transactionId = MDC.get("transactionId");
+    logger.info("Transaction ID: {} - Deleting training with ID={}", transactionId, trainingId);
+    try {
+      trainingService.deleteTraining(trainingId);
+      logger.info("Transaction ID: {} - Successfully deleted training with ID={}", transactionId, trainingId);
+    } catch (Exception e) {
+      logger.error("Transaction ID: {} - Error deleting training: {}", transactionId, e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  @Transactional
   public Training addTraining(Trainee trainee, Trainer trainer,
                               String trainingName, TrainingType trainingType,
                               Date trainingDate, int trainingDuration) {

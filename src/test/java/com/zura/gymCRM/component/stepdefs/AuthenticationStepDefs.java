@@ -50,6 +50,9 @@ public class AuthenticationStepDefs {
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
+    @Autowired
+    private StepDataContext stepDataContext;
+
     private AuthenticationRequest authRequest;
     private MvcResult mvcResult;
     private int responseStatus;
@@ -77,24 +80,32 @@ public class AuthenticationStepDefs {
     @Given("a user with username {string} and password {string} exists")
     public void a_user_with_username_and_password_exists(String username, String password) {
         try {
-            // Check if trainee exists
-            Optional<Trainee> traineeOpt = gymFacade.selectTraineeByusername(username);
-            if (traineeOpt.isEmpty()) {
-                // Create trainee
-                User user = new User();
-                user.setFirstName("Test");
-                user.setLastName("User");
+            // Check if user already exists as trainee
+            Optional<Trainee> existingTrainee = gymFacade.selectTraineeByusername(username);
+
+            if (existingTrainee.isEmpty()) {
+                // Create a new trainee with the specific username
+                logger.info("Creating test trainee with username: {}", username);
+
+                // Create a trainee
+                Date dob = new Date(); // Default date of birth
+                String address = "123 Test St"; // Default address
+
+                Trainee trainee = gymFacade.addTrainee("Test", "User", true, dob, address);
+
+                // The username might be auto-generated, so update it
+                User user = trainee.getUser();
                 user.setUsername(username);
-                user.setPassword(password); // In a real scenario, this would be encoded
-                user.setIsActive(true);
+                user.setPassword(password);
 
-                Trainee trainee = new Trainee();
-                trainee.setUser(user);
-                trainee.setDateOfBirth(new Date());
-                trainee.setAddress("123 Test St");
-
+                trainee = gymFacade.updateTrainee(trainee);
+                logger.info("Created trainee with username: {}", username);
+            } else {
+                // Update existing trainee with the password
+                Trainee trainee = existingTrainee.get();
+                trainee.getUser().setPassword(password);
                 gymFacade.updateTrainee(trainee);
-                logger.info("Created test trainee: {}", username);
+                logger.info("Updated existing trainee: {}", username);
             }
 
             // Remember username for later steps
@@ -126,6 +137,8 @@ public class AuthenticationStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
 
             // If successful, extract the token
             if (responseStatus == 200) {
@@ -137,6 +150,7 @@ public class AuthenticationStepDefs {
         } catch (Exception e) {
             logger.error("Error during login: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Login failed: " + e.getMessage());
         }
     }
@@ -178,6 +192,7 @@ public class AuthenticationStepDefs {
             } catch (Exception e) {
                 logger.error("Error during failed login attempt: {}", e.getMessage(), e);
                 lastException = e;
+                stepDataContext.setLastException(e);
                 fail("Failed login attempts test failed: " + e.getMessage());
             }
         }
@@ -207,6 +222,7 @@ public class AuthenticationStepDefs {
         } catch (Exception e) {
             logger.error("Error checking IP block: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("IP block test failed: " + e.getMessage());
         }
     }
@@ -220,19 +236,13 @@ public class AuthenticationStepDefs {
     @Given("I am authenticated as user {string}")
     public void i_am_authenticated_as_user(String username) {
         try {
-            // Try to find the user
+            // Try to find the user or create it if doesn't exist
             Optional<Trainee> traineeOpt = gymFacade.selectTraineeByusername(username);
             Optional<Trainer> trainerOpt = gymFacade.selectTrainerByUsername(username);
 
-            User user;
-            if (traineeOpt.isPresent()) {
-                user = traineeOpt.get().getUser();
-            } else if (trainerOpt.isPresent()) {
-                user = trainerOpt.get().getUser();
-            } else {
+            if (traineeOpt.isEmpty() && trainerOpt.isEmpty()) {
                 // Create a user if not found
                 a_user_with_username_and_password_exists(username, "password123");
-                user = gymFacade.selectTraineeByusername(username).get().getUser();
             }
 
             // Create a JWT token
@@ -254,6 +264,7 @@ public class AuthenticationStepDefs {
         } catch (Exception e) {
             logger.error("Error setting up authentication: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Failed to set up authentication: " + e.getMessage());
         }
     }
@@ -273,9 +284,12 @@ public class AuthenticationStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error changing password: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Password change test failed: " + e.getMessage());
         }
     }
@@ -306,9 +320,12 @@ public class AuthenticationStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error during logout: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Logout test failed: " + e.getMessage());
         }
     }
@@ -341,9 +358,12 @@ public class AuthenticationStepDefs {
                     .andReturn();
 
             responseStatus = mvcResult.getResponse().getStatus();
+            stepDataContext.setResponseStatus(responseStatus);
+            stepDataContext.setMvcResult(mvcResult);
         } catch (Exception e) {
             logger.error("Error accessing protected resource: {}", e.getMessage(), e);
             lastException = e;
+            stepDataContext.setLastException(e);
             fail("Access protected resource test failed: " + e.getMessage());
         }
     }

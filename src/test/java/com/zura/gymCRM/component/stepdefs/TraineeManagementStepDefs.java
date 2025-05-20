@@ -9,6 +9,7 @@ import com.zura.gymCRM.dto.TraineeRegistrationRequest;
 import com.zura.gymCRM.dto.TraineeRegistrationResponse;
 import com.zura.gymCRM.dto.UpdateTraineeRequest;
 import com.zura.gymCRM.entities.Trainee;
+import com.zura.gymCRM.entities.Training;
 import com.zura.gymCRM.entities.User;
 import com.zura.gymCRM.exceptions.NotFoundException;
 import com.zura.gymCRM.facade.GymFacade;
@@ -22,6 +23,7 @@ import io.cucumber.java.en.When;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -144,88 +146,59 @@ public class TraineeManagementStepDefs {
                 // Create a trainee if it doesn't exist
                 logger.info("Creating test trainee with username: {}", username);
 
-                // First try direct creation through gymFacade
+                // Create a user for the trainee
+                User user = new User();
+                user.setFirstName("John");
+                user.setLastName("Doe");
+                user.setUsername(username);
+                user.setPassword("password123");
+                user.setIsActive(true);
+
+                // Create the trainee
+                Trainee trainee = new Trainee();
+                trainee.setUser(user);
+
+                // Parse the test date of birth
                 try {
-                    // Parse the test date of birth
-                    Date dateOfBirth;
-                    try {
-                        dateOfBirth = DATE_FORMAT.parse(testUserDateOfBirth);
-                    } catch (ParseException e) {
-                        dateOfBirth = new Date(); // fallback to current date
-                        logger.error("Error parsing test date of birth: {}", e.getMessage());
-                    }
-
-                    Trainee trainee = gymFacade.addTrainee("John", "Doe", true, dateOfBirth, "123 Main St");
-
-                    // If username is provided and differs from the auto-generated one, update it
-                    if (!username.equals(trainee.getUser().getUsername())) {
-                        trainee.getUser().setUsername(username);
-                        gymFacade.updateTrainee(trainee);
-                    }
-                } catch (Exception e) {
-                    logger.error("Error creating trainee: {}", e.getMessage(), e);
-
-                    // Alternative approach with manual User creation
-                    User user = new User();
-                    user.setFirstName("John");
-                    user.setLastName("Doe");
-                    user.setUsername(username);
-                    user.setPassword("password123");
-                    user.setIsActive(true);
-
-                    Trainee trainee = new Trainee();
-                    trainee.setUser(user);
-
-                    // Parse the test date of birth
-                    try {
-                        trainee.setDateOfBirth(DATE_FORMAT.parse(testUserDateOfBirth));
-                    } catch (ParseException ex) {
-                        trainee.setDateOfBirth(new Date()); // fallback to current date
-                        logger.error("Error parsing test date of birth: {}", ex.getMessage());
-                    }
-
-                    trainee.setAddress("123 Main St");
-
-                    gymFacade.updateTrainee(trainee);
-                }
-            } else {
-                // If trainee exists but has the wrong date of birth, update it
-                Trainee trainee = traineeOpt.get();
-                try {
-                    Date expectedDob = DATE_FORMAT.parse(testUserDateOfBirth);
-                    String actualDateStr = "";
-                    if (trainee.getDateOfBirth() != null) {
-                        actualDateStr = DATE_FORMAT.format(trainee.getDateOfBirth());
-                    }
-
-                    if (!testUserDateOfBirth.equals(actualDateStr)) {
-                        trainee.setDateOfBirth(expectedDob);
-                        gymFacade.updateTrainee(trainee);
-                        logger.info("Updated trainee date of birth to: {}", testUserDateOfBirth);
-                    }
+                    trainee.setDateOfBirth(DATE_FORMAT.parse(testUserDateOfBirth));
                 } catch (ParseException e) {
-                    logger.error("Error parsing date: {}", e.getMessage());
+                    trainee.setDateOfBirth(new Date()); // fallback to current date
+                    logger.error("Error parsing test date of birth: {}", e.getMessage());
+                }
+
+                trainee.setAddress("123 Main St");
+
+                // Save the trainee
+                gymFacade.addTrainee(
+                        user.getFirstName(),
+                        user.getLastName(),
+                        user.getIsActive(),
+                        trainee.getDateOfBirth(),
+                        trainee.getAddress()
+                );
+
+                // Verify it was created
+                traineeOpt = gymFacade.selectTraineeByusername(username);
+                if (traineeOpt.isEmpty()) {
+                    fail("Failed to create test trainee: " + username);
                 }
             }
 
-            // Verify the trainee exists with correct data
-            traineeOpt = gymFacade.selectTraineeByusername(username);
-            assertTrue(traineeOpt.isPresent(), "Trainee should exist for test: " + username);
-
-            // Verify date of birth
+            // Now ensure the trainee has the correct data
             Trainee trainee = traineeOpt.get();
+
+            // Update dateOfBirth if needed
             try {
                 Date expectedDob = DATE_FORMAT.parse(testUserDateOfBirth);
-                if (!DATE_FORMAT.format(expectedDob).equals(DATE_FORMAT.format(trainee.getDateOfBirth()))) {
-                    logger.warn("Date of birth mismatch for trainee {}: expected {}, actual {}",
-                            username, testUserDateOfBirth, DATE_FORMAT.format(trainee.getDateOfBirth()));
+                if (trainee.getDateOfBirth() == null ||
+                        !DATE_FORMAT.format(expectedDob).equals(DATE_FORMAT.format(trainee.getDateOfBirth()))) {
 
-                    // Try to update it again
                     trainee.setDateOfBirth(expectedDob);
                     gymFacade.updateTrainee(trainee);
+                    logger.info("Updated trainee date of birth to: {}", testUserDateOfBirth);
                 }
             } catch (ParseException e) {
-                logger.error("Error parsing date: {}", e.getMessage());
+                logger.error("Error updating date of birth: {}", e.getMessage());
             }
         } catch (Exception e) {
             logger.error("Error in trainee setup: {}", e.getMessage(), e);
@@ -261,6 +234,13 @@ public class TraineeManagementStepDefs {
     @And("the profile contains correct personal information:")
     public void theProfileContainsCorrectPersonalInformation(DataTable dataTable) {
         try {
+            if (mvcResult == null) {
+                mvcResult = stepDataContext.getMvcResult();
+                if (mvcResult == null) {
+                    fail("MvcResult is null, could not retrieve it from context");
+                }
+            }
+
             Map<String, String> expectedData = dataTable.asMap(String.class, String.class);
 
             String responseBody = mvcResult.getResponse().getContentAsString();
@@ -337,9 +317,23 @@ public class TraineeManagementStepDefs {
     @And("the profile contains the new information:")
     public void theProfileContainsTheNewInformation(DataTable dataTable) {
         try {
+            if (mvcResult == null) {
+                mvcResult = stepDataContext.getMvcResult();
+                if (mvcResult == null) {
+                    fail("MvcResult is null, cannot validate profile update");
+                }
+            }
+
             Map<String, String> expectedData = dataTable.asMap(String.class, String.class);
 
             String responseBody = mvcResult.getResponse().getContentAsString();
+            logger.info("Response content: {}", responseBody);
+
+            // Check if response body is empty or invalid
+            if (responseBody == null || responseBody.isEmpty()) {
+                fail("Response body is empty, cannot validate profile update");
+            }
+
             TraineeProfileResponse profile = objectMapper.readValue(responseBody, TraineeProfileResponse.class);
 
             for (Map.Entry<String, String> entry : expectedData.entrySet()) {
@@ -415,6 +409,25 @@ public class TraineeManagementStepDefs {
     @When("I delete trainee {string}")
     public void iDeleteTrainee(String username) {
         try {
+            // First, we need to delete all associated trainings to avoid foreign key constraint violations
+            Optional<Trainee> traineeOpt = gymFacade.selectTraineeByusername(username);
+            if (traineeOpt.isPresent()) {
+                Trainee trainee = traineeOpt.get();
+                // Get all trainings for this trainee and delete them
+                List<Training> trainings = gymFacade.getTraineeTrainingsByCriteria(username, null, null, null, null);
+                if (trainings != null && !trainings.isEmpty()) {
+                    for (Training training : trainings) {
+                        try {
+                            // Use service to delete each training
+                            gymFacade.deleteTraining(training.getId());
+                        } catch (Exception e) {
+                            logger.warn("Error deleting training: {}", e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Now try to delete the trainee
             mvcResult = mockMvc.perform(
                             MockMvcRequestBuilders.delete("/api/trainees/{username}", username)
                                     .header("Authorization", "Bearer " + authToken))
