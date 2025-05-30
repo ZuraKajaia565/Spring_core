@@ -1,0 +1,97 @@
+services:
+  gymcrm-main:
+    container_name: gymcrm-main
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/dev_db
+      - SPRING_DATASOURCE_USERNAME=devuser
+      - SPRING_DATASOURCE_PASSWORD=devpass
+      - SPRING_ACTIVEMQ_BROKER_URL=tcp://activemq:61616
+      - SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING=true
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_SQL_INIT_MODE=never
+    depends_on:
+      - mariadb
+      - activemq
+    networks:
+      - gymcrm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gymcrm-report:
+    container_name: gymcrm-report
+    build:
+      context: .
+      dockerfile: Dockerfile.report
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/dev_db
+      - SPRING_DATASOURCE_USERNAME=devuser
+      - SPRING_DATASOURCE_PASSWORD=devpass
+      - SPRING_ACTIVEMQ_BROKER_URL=tcp://activemq:61616
+      - SERVER_PORT=8081
+      - SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING=true
+    depends_on:
+      - mariadb
+      - activemq
+    networks:
+      - gymcrm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mariadb:
+    container_name: gymcrm-mariadb
+    image: mariadb:10.6
+    ports:
+      - "3307:3306"  # Changed from 3306:3306 to 3307:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=dev_db
+      - MYSQL_USER=devuser
+      - MYSQL_PASSWORD=devpass
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - gymcrm-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  activemq:
+    container_name: gymcrm-activemq
+    image: symptoma/activemq:5.16.3
+    ports:
+      - "61617:61616"  # JMS - changed from 61616:61616 to 61617:61616
+      - "8162:8161"    # Web console
+    environment:
+      - ACTIVEMQ_ADMIN_LOGIN=admin
+      - ACTIVEMQ_ADMIN_PASSWORD=admin
+    networks:
+      - gymcrm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8161"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  gymcrm-network:
+    driver: bridge
+
+volumes:
+  mariadb-data:
