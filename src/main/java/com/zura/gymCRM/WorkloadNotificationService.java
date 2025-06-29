@@ -20,26 +20,30 @@ import org.springframework.stereotype.Service;
 /**
  * Enhanced service for notifying the workload service about training changes
  * Now supports both direct API calls via Feign and message queueing via
- * ActiveMQ
+ * ActiveMQ (when available)
  */
 @Service
 public class WorkloadNotificationService {
   private static final Logger logger =
       LoggerFactory.getLogger(WorkloadNotificationService.class);
 
-  private final WorkloadMessageProducer messageProducer;
+  private final WorkloadMessageProducer messageProducer; // Optional - only available when ActiveMQ is enabled
   private final WorkloadServiceClient workloadClient;
 
   @Autowired
-  public WorkloadNotificationService(WorkloadMessageProducer messageProducer,
+  public WorkloadNotificationService(@Autowired(required = false) WorkloadMessageProducer messageProducer,
                                      WorkloadServiceClient workloadClient) {
     this.messageProducer = messageProducer;
     this.workloadClient = workloadClient;
+    
+    if (messageProducer == null) {
+      logger.info("WorkloadMessageProducer not available - ActiveMQ is disabled. Using direct API calls only.");
+    }
   }
 
   /**
    * Notifies the workload service about a new training using both direct API
-   * and message queue for reliability
+   * and message queue for reliability (if ActiveMQ is enabled)
    *
    * @param training The training entity
    */
@@ -62,13 +66,6 @@ public class WorkloadNotificationService {
       int duration = training.getTrainingDuration();
       String username = trainer.getUser().getUsername();
 
-      // Create a message for queue-based communication
-      WorkloadMessage message = new WorkloadMessage(
-          username, trainer.getUser().getFirstName(),
-          trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
-          year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
-          transactionId);
-
       // 1. Try direct API call first using Feign client
       try {
         // Create request for direct API call
@@ -82,17 +79,34 @@ public class WorkloadNotificationService {
         if (response.getStatusCode().is2xxSuccessful()) {
           logger.info("Successfully updated workload via direct API call");
         } else {
-          // If direct API fails, fall back to message queue
-          logger.warn("Failed to update workload via API, falling back to " +
-                      "message queue");
-          messageProducer.sendWorkloadMessage(message);
+          // If direct API fails, fall back to message queue (if available)
+          if (messageProducer != null) {
+            logger.warn("Failed to update workload via API, falling back to message queue");
+            WorkloadMessage message = new WorkloadMessage(
+                username, trainer.getUser().getFirstName(),
+                trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+                year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
+                transactionId);
+            messageProducer.sendWorkloadMessage(message);
+          } else {
+            logger.warn("Failed to update workload via API and message queue is not available (ActiveMQ disabled)");
+            throw new WorkloadServiceException("Failed to update workload via API and message queue is not available");
+          }
         }
       } catch (Exception e) {
-        // If direct API call fails, fall back to message queue
-        logger.warn("Failed to connect to workload service API: {}. Falling " +
-                    "back to message queue",
-                    e.getMessage());
-        messageProducer.sendWorkloadMessage(message);
+        // If direct API call fails, fall back to message queue (if available)
+        if (messageProducer != null) {
+          logger.warn("Failed to connect to workload service API: {}. Falling back to message queue", e.getMessage());
+          WorkloadMessage message = new WorkloadMessage(
+              username, trainer.getUser().getFirstName(),
+              trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+              year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
+              transactionId);
+          messageProducer.sendWorkloadMessage(message);
+        } else {
+          logger.error("Failed to connect to workload service API and message queue is not available (ActiveMQ disabled): {}", e.getMessage());
+          throw new WorkloadServiceException("Failed to connect to workload service API and message queue is not available", e);
+        }
       }
 
       logger.info("Successfully notified workload service about new training");
@@ -129,13 +143,6 @@ public class WorkloadNotificationService {
       int duration = training.getTrainingDuration();
       String username = trainer.getUser().getUsername();
 
-      // Create a message for queue-based communication
-      WorkloadMessage message = new WorkloadMessage(
-          username, trainer.getUser().getFirstName(),
-          trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
-          year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
-          transactionId);
-
       // Try direct API call first
       try {
         WorkloadRequest workloadRequest = new WorkloadRequest(
@@ -148,15 +155,34 @@ public class WorkloadNotificationService {
         if (response.getStatusCode().is2xxSuccessful()) {
           logger.info("Successfully updated workload via direct API call");
         } else {
-          logger.warn("Failed to update workload via API, falling back to " +
-                      "message queue");
-          messageProducer.sendWorkloadMessage(message);
+          // If direct API fails, fall back to message queue (if available)
+          if (messageProducer != null) {
+            logger.warn("Failed to update workload via API, falling back to message queue");
+            WorkloadMessage message = new WorkloadMessage(
+                username, trainer.getUser().getFirstName(),
+                trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+                year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
+                transactionId);
+            messageProducer.sendWorkloadMessage(message);
+          } else {
+            logger.warn("Failed to update workload via API and message queue is not available (ActiveMQ disabled)");
+            throw new WorkloadServiceException("Failed to update workload via API and message queue is not available");
+          }
         }
       } catch (Exception e) {
-        logger.warn("Failed to connect to workload service API: {}. Falling " +
-                    "back to message queue",
-                    e.getMessage());
-        messageProducer.sendWorkloadMessage(message);
+        // If direct API call fails, fall back to message queue (if available)
+        if (messageProducer != null) {
+          logger.warn("Failed to connect to workload service API: {}. Falling back to message queue", e.getMessage());
+          WorkloadMessage message = new WorkloadMessage(
+              username, trainer.getUser().getFirstName(),
+              trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+              year, month, duration, WorkloadMessage.MessageType.CREATE_UPDATE,
+              transactionId);
+          messageProducer.sendWorkloadMessage(message);
+        } else {
+          logger.error("Failed to connect to workload service API and message queue is not available (ActiveMQ disabled): {}", e.getMessage());
+          throw new WorkloadServiceException("Failed to connect to workload service API and message queue is not available", e);
+        }
       }
 
       logger.info(
@@ -194,31 +220,41 @@ public class WorkloadNotificationService {
       int month = trainingDate.getMonthValue();
       String username = trainer.getUser().getUsername();
 
-      // Create a message for queue-based communication
-      WorkloadMessage message = new WorkloadMessage(
-          username, trainer.getUser().getFirstName(),
-          trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
-          year, month,
-          0, // Set to 0 since we're deleting
-          WorkloadMessage.MessageType.DELETE, transactionId);
-
       // Try direct API call first
       try {
-        ResponseEntity<Void> response =
-            workloadClient.deleteWorkload(username, year, month, transactionId);
+        ResponseEntity<Void> response = workloadClient.deleteWorkload(username, year, month, transactionId);
 
         if (response.getStatusCode().is2xxSuccessful()) {
           logger.info("Successfully deleted workload via direct API call");
         } else {
-          logger.warn("Failed to delete workload via API, falling back to " +
-                      "message queue");
-          messageProducer.sendWorkloadMessage(message);
+          // If direct API fails, fall back to message queue (if available)
+          if (messageProducer != null) {
+            logger.warn("Failed to delete workload via API, falling back to message queue");
+            WorkloadMessage message = new WorkloadMessage(
+                username, trainer.getUser().getFirstName(),
+                trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+                year, month, 0, WorkloadMessage.MessageType.DELETE,
+                transactionId);
+            messageProducer.sendWorkloadMessage(message);
+          } else {
+            logger.warn("Failed to delete workload via API and message queue is not available (ActiveMQ disabled)");
+            throw new WorkloadServiceException("Failed to delete workload via API and message queue is not available");
+          }
         }
       } catch (Exception e) {
-        logger.warn("Failed to connect to workload service API: {}. Falling " +
-                    "back to message queue",
-                    e.getMessage());
-        messageProducer.sendWorkloadMessage(message);
+        // If direct API call fails, fall back to message queue (if available)
+        if (messageProducer != null) {
+          logger.warn("Failed to connect to workload service API: {}. Falling back to message queue", e.getMessage());
+          WorkloadMessage message = new WorkloadMessage(
+              username, trainer.getUser().getFirstName(),
+              trainer.getUser().getLastName(), trainer.getUser().getIsActive(),
+              year, month, 0, WorkloadMessage.MessageType.DELETE,
+              transactionId);
+          messageProducer.sendWorkloadMessage(message);
+        } else {
+          logger.error("Failed to connect to workload service API and message queue is not available (ActiveMQ disabled): {}", e.getMessage());
+          throw new WorkloadServiceException("Failed to connect to workload service API and message queue is not available", e);
+        }
       }
 
       logger.info(

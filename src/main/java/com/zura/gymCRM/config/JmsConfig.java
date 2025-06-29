@@ -3,6 +3,7 @@ package com.zura.gymCRM.config;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.RedeliveryPolicy;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -15,18 +16,19 @@ import org.springframework.jms.support.converter.MessageType;
 
 @Configuration
 @EnableJms
+@ConditionalOnProperty(name = "spring.activemq.enabled", havingValue = "true", matchIfMissing = false)
 public class JmsConfig {
 
     public static final String WORKLOAD_QUEUE = "workload-queue";
     public static final String WORKLOAD_DLQ = "workload-dlq";
 
-    @Value("${spring.activemq.broker-url}")
+    @Value("${spring.activemq.broker-url:tcp://localhost:61616}")
     private String brokerUrl;
 
-    @Value("${spring.activemq.user}")
+    @Value("${spring.activemq.user:admin}")
     private String username;
 
-    @Value("${spring.activemq.password}")
+    @Value("${spring.activemq.password:admin}")
     private String password;
 
     @Value("${spring.activemq.packages.trust-all:false}")
@@ -76,14 +78,15 @@ public class JmsConfig {
     // Different connection configuration for production environment
     @Configuration
     @Profile("prod")
+    @ConditionalOnProperty(name = "spring.activemq.enabled", havingValue = "true", matchIfMissing = false)
     public static class ProdJmsConfig {
-        @Value("${spring.activemq.prod.broker-url}")
+        @Value("${spring.activemq.prod.broker-url:tcp://prod-activemq:61616}")
         private String prodBrokerUrl;
 
-        @Value("${spring.activemq.prod.user}")
+        @Value("${spring.activemq.prod.user:zura}")
         private String prodUsername;
 
-        @Value("${spring.activemq.prod.password}")
+        @Value("${spring.activemq.prod.password:divide14}")
         private String prodPassword;
 
         @Bean
@@ -109,6 +112,7 @@ public class JmsConfig {
     // Development environment configuration
     @Configuration
     @Profile("dev")
+    @ConditionalOnProperty(name = "spring.activemq.enabled", havingValue = "true", matchIfMissing = false)
     public static class DevJmsConfig {
         @Value("${spring.activemq.dev.broker-url:tcp://localhost:61616}")
         private String devBrokerUrl;

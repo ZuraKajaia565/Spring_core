@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# Build the fat JAR
-echo "Building fat JAR..."
-./mvnw clean package -DskipTests
+echo "Building GymCRM application with RDS support..."
 
-# Build Docker images
-echo "Building Docker images..."
-docker compose build
+# Clean and build the application
+mvn clean package -DskipTests
+
+# Build Docker image for RDS deployment
+docker build -t gymcrm-rds:latest .
 
 echo "Build completed successfully!"
+echo "Docker image 'gymcrm-rds:latest' is ready for deployment to AWS EC2 with RDS integration"
